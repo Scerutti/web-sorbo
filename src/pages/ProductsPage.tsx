@@ -4,7 +4,7 @@ import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } fro
 import { useCosts } from '../hooks/useCosts'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
-import { computeStockSummary, debounce, computeStockStatus, formatCurrency } from '../shared/functions'
+import { computeStockSummary, debounce, computeStockStatus, formatCurrency, recalculateProductFinancials, iif } from '../shared/functions'
 import type { Product } from '@/types'
 import { StockSummaryCard } from '../components/dashboard/StockSummaryCard'
 import { ProductFilters } from '../components/products/ProductFilters'
@@ -32,16 +32,25 @@ export const ProductsPage: React.FC = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<ProductType | ''>('')
+  const [sortBy, setSortBy] = useState<'nombre' | 'stock'>('nombre')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
   const isLoading = isLoadingProducts || isLoadingCosts
 
+  // Recalcular costos de productos basados en los costos disponibles
+  const productsWithRecalculatedCosts = useMemo(() => {
+    if (costItems.length === 0) return products
+    return products.map(product => 
+      recalculateProductFinancials(product, costItems)
+    )
+  }, [products, costItems])
+
   const availableProductTypes = useMemo(() => {
-    const presentTypes = new Set(products.map(p => p.tipo))
+    const presentTypes = new Set(productsWithRecalculatedCosts.map(p => p.tipo))
     return PRODUCT_TYPES.filter(type => presentTypes.has(type))
-  }, [products])
+  }, [productsWithRecalculatedCosts])
 
   const debouncedSearch = useMemo(
     () => debounce((query: string) => {
@@ -51,10 +60,10 @@ export const ProductsPage: React.FC = () => {
   )
 
   useEffect(() => {
-    if (products.length > 0) {
-      setFilteredProducts(products)
+    if (productsWithRecalculatedCosts.length > 0) {
+      setFilteredProducts(productsWithRecalculatedCosts)
     }
-  }, [products])
+  }, [productsWithRecalculatedCosts])
 
   useEffect(() => {
     debouncedSearch(searchQuery)
@@ -62,10 +71,10 @@ export const ProductsPage: React.FC = () => {
 
   useEffect(() => {
     filterProducts(searchQuery, selectedType)
-  }, [selectedType, products])
+  }, [selectedType, productsWithRecalculatedCosts])
 
   const filterProducts = (query: string, type: ProductType | '') => {
-    let filtered = [...products]
+    let filtered = [...productsWithRecalculatedCosts]
 
     if (query.trim()) {
       filtered = filtered.filter(p =>
@@ -82,9 +91,21 @@ export const ProductsPage: React.FC = () => {
 
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
-      return sortOrder === 'asc' ? a.stock - b.stock : b.stock - a.stock
+      if (sortBy === 'nombre') {
+        // Ordenamiento alfabético por nombre
+        const nameA = a.nombre.toLowerCase()
+        const nameB = b.nombre.toLowerCase()
+        if (sortOrder === 'asc') {
+          return nameA.localeCompare(nameB, 'es')
+        } else {
+          return nameB.localeCompare(nameA, 'es')
+        }
+      } else {
+        // Ordenamiento por stock
+        return sortOrder === 'asc' ? a.stock - b.stock : b.stock - a.stock
+      }
     })
-  }, [filteredProducts, sortOrder])
+  }, [filteredProducts, sortBy, sortOrder])
 
   const pagination = usePagination(sortedProducts, ITEMS_PER_PAGE)
 
@@ -139,7 +160,7 @@ export const ProductsPage: React.FC = () => {
     }
   }
 
-  const stockSummary = computeStockSummary(products)
+  const stockSummary = computeStockSummary(productsWithRecalculatedCosts)
 
   if (isLoading) {
     return (
@@ -195,7 +216,40 @@ export const ProductsPage: React.FC = () => {
               <col className="w-[20%]" />
             </colgroup>
             <TableHeader>
-              <TableHead>Nombre</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  <span>Nombre</span>
+                  <button
+                    onClick={() => {
+                      if (sortBy === 'nombre') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('nombre')
+                        setSortOrder('asc')
+                      }
+                    }}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+                    aria-label={`Ordenar por nombre ${sortBy === 'nombre' && sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
+                    title={`Ordenar por nombre ${sortBy === 'nombre' && sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
+                  >
+                    {iif(
+                      sortBy === 'nombre' && sortOrder === 'asc',
+                      <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>,
+                      iif(
+                        sortBy === 'nombre' && sortOrder === 'desc',
+                        <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>,
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                      )
+                    )}
+                  </button>
+                </div>
+              </TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead align="right">Precio Costo</TableHead>
               <TableHead align="right">Costos</TableHead>
@@ -204,18 +258,31 @@ export const ProductsPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span>Stock</span>
                   <button
-                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    onClick={() => {
+                      if (sortBy === 'stock') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('stock')
+                        setSortOrder('asc')
+                      }
+                    }}
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    aria-label={`Ordenar por stock ${sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
+                    aria-label={`Ordenar por stock ${sortBy === 'stock' && sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
                   >
-                    {sortOrder === 'asc' ? (
+                    {iif(
+                      sortBy === 'stock' && sortOrder === 'asc',
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      </svg>,
+                      iif(
+                        sortBy === 'stock' && sortOrder === 'desc',
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>,
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                      )
                     )}
                   </button>
                 </div>

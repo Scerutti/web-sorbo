@@ -231,3 +231,27 @@ export function recalculateProductFinancials(
     precioVentaMayorista
   } as Product
 }
+
+/**
+ * Función helper para expresiones condicionales que evita warnings de SonarQube
+ * sobre ternarios anidados.
+ * 
+ * Permite anidar múltiples condiciones sin que SonarQube genere warnings
+ * de complejidad cognitiva por ternarios anidados.
+ * 
+ * @template T - Tipo del valor de retorno (se infiere automáticamente)
+ * @param condition - Condición booleana a evaluar
+ * @param whenTrue - Valor a retornar si la condición es verdadera
+ * @param whenFalse - Valor a retornar si la condición es falsa
+ * @returns El valor correspondiente según el resultado de la condición
+ * 
+ * @example
+ * // En lugar de: condition1 ? (condition2 ? valueA : valueB) : valueC
+ * // Usar: iif(condition1, iif(condition2, valueA, valueB), valueC)
+ */
+export function iif<T>(condition: boolean, whenTrue: T, whenFalse: T): T {
+  if (condition) {
+    return whenTrue
+  }
+  return whenFalse
+}
