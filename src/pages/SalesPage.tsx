@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { useSales, useCreateSale } from '../hooks/useSales'
+import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales'
 import { useProducts } from '../hooks/useProducts'
 import { useCosts } from '../hooks/useCosts'
 import { useToast } from '../providers/ToastProvider'
+import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
 import { SalesTable } from '../components/sales/SalesTable'
 import { CreateSaleModal } from '../components/sales/CreateSaleModal'
@@ -11,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { Pagination } from '../components/ui/Pagination'
 import { usePagination } from '../hooks/usePagination'
 import { ITEMS_PER_PAGE } from '../shared/constants'
+import { formatDate, formatCurrency } from '../shared/functions'
 
 /**
  * Página de ventas con filtros por fecha y ordenamiento
@@ -20,11 +22,15 @@ export const SalesPage: React.FC = () => {
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
   const createSaleMutation = useCreateSale()
+  const updateSaleMutation = useUpdateSale()
+  const deleteSaleMutation = useDeleteSale()
   const toast = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
 
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
   const [isMayoristaModal, setIsMayoristaModal] = useState(false)
+  const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -149,7 +155,33 @@ export const SalesPage: React.FC = () => {
         </div>
       </div>
 
-      <SalesTable sales={pagination.items} />
+      <SalesTable 
+        sales={pagination.items}
+        onEdit={(sale) => {
+          setEditingSale(sale)
+          setIsMayoristaModal(sale.esMayorista)
+          setIsSaleModalOpen(true)
+        }}
+        onDelete={async (sale) => {
+          const confirmed = await confirm({
+            title: 'Eliminar venta',
+            message: `¿Estás seguro de eliminar esta venta del ${formatDate(sale.fecha)} por ${formatCurrency(sale.total)}? Esta acción no se puede deshacer.`,
+            variant: 'danger',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar'
+          })
+
+          if (!confirmed) return
+
+          try {
+            await deleteSaleMutation.mutateAsync(sale.id)
+            toast.success('Venta eliminada correctamente')
+          } catch (error) {
+            console.error('Error eliminando venta:', error)
+            toast.error('Error al eliminar la venta')
+          }
+        }}
+      />
 
       <Pagination
         currentPage={pagination.currentPage}
@@ -163,22 +195,42 @@ export const SalesPage: React.FC = () => {
         onClose={() => {
           setIsSaleModalOpen(false)
           setIsMayoristaModal(false)
+          setEditingSale(null)
         }}
         onSubmit={async (sale) => {
           try {
-            await createSaleMutation.mutateAsync(sale)
-            toast.success(sale.esMayorista ? 'Venta mayorista creada correctamente' : 'Venta creada correctamente')
+            if (editingSale) {
+              // Modo edición
+              await updateSaleMutation.mutateAsync({
+                id: editingSale.id,
+                sale: {
+                  fecha: sale.fecha,
+                  items: sale.items,
+                  esMayorista: sale.esMayorista,
+                  // total y vendedorId son opcionales, el backend los recalcula/ignora
+                }
+              })
+              toast.success(sale.esMayorista ? 'Venta mayorista actualizada correctamente' : 'Venta actualizada correctamente')
+            } else {
+              // Modo creación
+              await createSaleMutation.mutateAsync(sale)
+              toast.success(sale.esMayorista ? 'Venta mayorista creada correctamente' : 'Venta creada correctamente')
+            }
             setIsSaleModalOpen(false)
             setIsMayoristaModal(false)
+            setEditingSale(null)
           } catch (error) {
-            console.error('Error creando venta:', error)
-            toast.error('Error al crear la venta')
+            console.error(`Error ${editingSale ? 'actualizando' : 'creando'} venta:`, error)
+            toast.error(`Error al ${editingSale ? 'actualizar' : 'crear'} la venta`)
           }
         }}
         products={products}
         costItems={costItems}
         esMayorista={isMayoristaModal}
+        initialSale={editingSale || undefined}
       />
+
+      {ConfirmDialog}
     </div>
   )
 }

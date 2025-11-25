@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { CostItem, Product, SaleItem, Sale } from '../../shared/types'
 import { formatCurrency, calculateApplicableCosts, calculateProductSalePrice } from '../../shared/functions'
 import { Modal } from '../ui/Modal'
-import { Select } from '../ui/Select'
+import { Autocomplete } from '../ui/Autocomplete'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { useAuth } from '../../providers/AuthProvider'
@@ -14,6 +14,7 @@ interface CreateSaleModalProps {
   products: Product[]
   costItems: CostItem[]
   esMayorista?: boolean
+  initialSale?: Sale // Para modo edición
 }
 
 interface SaleItemRow {
@@ -39,24 +40,52 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   onSubmit,
   products,
   costItems,
-  esMayorista: initialEsMayorista = false
+  esMayorista: initialEsMayorista = false,
+  initialSale
 }) => {
   const { user } = useAuth()
-  const [saleItems, setSaleItems] = useState<Array<SaleItemRow & { id: string }>>([
-    createEmptyItem()
-  ])
-  const [esMayorista, setEsMayorista] = useState(initialEsMayorista)
+  const isEditMode = !!initialSale
+  
+  // Inicializar items desde la venta existente si estamos en modo edición
+  const initializeItems = (): Array<SaleItemRow & { id: string }> => {
+    if (initialSale && initialSale.items.length > 0) {
+      return initialSale.items.map((item, index) => ({
+        id: `item-${initialSale.id}-${index}`,
+        productId: item.productId,
+        quantity: item.cantidad,
+        product: products.find(p => p.id === item.productId) || null
+      }))
+    }
+    return [createEmptyItem()]
+  }
+
+  const [saleItems, setSaleItems] = useState<Array<SaleItemRow & { id: string }>>(initializeItems)
+  const [esMayorista, setEsMayorista] = useState(initialSale?.esMayorista ?? initialEsMayorista)
   const [errors, setErrors] = useState<Partial<Record<number | 'general', string>>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Resetear formulario al abrir/cerrar
   useEffect(() => {
     if (isOpen) {
-      setSaleItems([createEmptyItem()])
-      setEsMayorista(initialEsMayorista)
+      if (initialSale && products.length > 0) {
+        // Modo edición: cargar datos de la venta
+        const items = initialSale.items.map((item, index) => ({
+          id: `item-${initialSale.id}-${index}`,
+          productId: item.productId,
+          quantity: item.cantidad,
+          product: products.find(p => p.id === item.productId) || null
+        }))
+        setSaleItems(items.length > 0 ? items : [createEmptyItem()])
+        setEsMayorista(initialSale.esMayorista)
+      } else {
+        // Modo creación: resetear
+        setSaleItems([createEmptyItem()])
+        setEsMayorista(initialEsMayorista)
+      }
       setErrors({})
     }
-  }, [isOpen, initialEsMayorista])
+  }, [isOpen, initialEsMayorista, initialSale, products])
 
   const availableProducts = products.filter(p => p.stock > 0)
 
@@ -84,7 +113,16 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   }
 
   const addItem = () => {
-    setSaleItems([...saleItems, createEmptyItem()])
+    const newItem = createEmptyItem()
+    setSaleItems([...saleItems, newItem])
+    
+    // Hacer scroll al nuevo item después de que se renderice
+    setTimeout(() => {
+      const element = itemRefs.current.get(newItem.id)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }, 100)
   }
 
   const computeItemErrors = (items: Array<SaleItemRow & { id: string }>): Record<number, string> => {
@@ -224,12 +262,15 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   const hasItemErrors = Object.keys(errors).some(key => key !== 'general')
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={esMayorista ? "Nueva Venta Mayorista" : "Nueva Venta"}
-      size="lg"
-    >
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={isEditMode 
+          ? (esMayorista ? "Editar Venta Mayorista" : "Editar Venta")
+          : (esMayorista ? "Nueva Venta Mayorista" : "Nueva Venta")
+        }
+        size="lg"
+      >
       {errors.general && (
         <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-600 dark:text-red-400">{errors.general}</p>
@@ -240,16 +281,17 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         {/* Toggle para venta mayorista */}
         <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
-            <label htmlFor="esMayorista" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Venta Mayorista
-            </label>
+            </span>
             {esMayorista && (
               <span className="px-2 py-0.5 text-xs font-semibold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">
                 MAYORISTA
               </span>
             )}
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label htmlFor="esMayorista" className="relative inline-flex items-center cursor-pointer">
+            <span className="sr-only">Toggle venta mayorista</span>
             <input
               type="checkbox"
               id="esMayorista"
@@ -277,6 +319,13 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
             return (
               <div
                 key={item.id}
+                ref={(el) => {
+                  if (el) {
+                    itemRefs.current.set(item.id, el)
+                  } else {
+                    itemRefs.current.delete(item.id)
+                  }
+                }}
                 className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3"
               >
               <div className="flex justify-between items-start">
@@ -297,16 +346,17 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                 )}
               </div>
 
-              <Select
+              <Autocomplete
                 label="Producto"
                 value={item.productId}
-                onChange={(e) => updateItem(index, 'productId', e.target.value)}
+                onChange={(value) => updateItem(index, 'productId', value)}
                 options={[
                   { value: '', label: 'Seleccionar producto' },
                   ...productOptions
                 ]}
                 error={lowerItemError?.includes('producto') ? itemError : undefined}
                 required
+                placeholder="Buscar producto..."
                 aria-label={`Seleccionar producto ${index + 1}`}
               />
 
@@ -381,7 +431,10 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
             isLoading={isLoading}
             disabled={!hasValidItems || total === 0 || hasItemErrors}
           >
-            {esMayorista ? 'Confirmar Venta Mayorista' : 'Confirmar Venta'}
+            {isEditMode 
+              ? (esMayorista ? 'Guardar Cambios (Mayorista)' : 'Guardar Cambios')
+              : (esMayorista ? 'Confirmar Venta Mayorista' : 'Confirmar Venta')
+            }
           </Button>
         </div>
       </form>

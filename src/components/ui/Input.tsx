@@ -46,6 +46,12 @@ export const Input: React.FC<InputProps> = ({
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? errorId : helperId}
         aria-errormessage={error ? errorId : undefined}
+        onWheel={(e) => {
+          // Prevenir que la rueda del mouse modifique valores en inputs number cuando está enfocado
+          if (props.type === 'number' && document.activeElement === e.currentTarget) {
+            e.currentTarget.blur()
+          }
+        }}
         {...props}
       />
       {error && (

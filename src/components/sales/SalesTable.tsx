@@ -4,9 +4,12 @@ import { formatDate, formatCurrency } from '../../shared/functions'
 import { Table, TableHeader, TableHead, TableRow, TableCell } from '../ui/Table'
 import { Badge } from '../ui/Badge'
 import { Modal } from '../ui/Modal'
+import { Button } from '../ui/Button'
 
 interface SalesTableProps {
   sales: Sale[]
+  onEdit?: (sale: Sale) => void
+  onDelete?: (sale: Sale) => void
 }
 
 /**
@@ -14,7 +17,7 @@ interface SalesTableProps {
  * Desktop: tabla horizontal
  * Mobile: cards verticales
  */
-export const SalesTable: React.FC<SalesTableProps> = ({ sales }) => {
+export const SalesTable: React.FC<SalesTableProps> = ({ sales, onEdit, onDelete }) => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
   const openModal = (sale: Sale) => setSelectedSale(sale)
@@ -32,6 +35,7 @@ export const SalesTable: React.FC<SalesTableProps> = ({ sales }) => {
             <TableHead>Tipo</TableHead>
             <TableHead align="right">Total Venta</TableHead>
             <TableHead>Detalle</TableHead>
+            {(onEdit || onDelete) && <TableHead>Acciones</TableHead>}
           </TableHeader>
           <tbody>
             {sales.map((sale, index) => {
@@ -57,6 +61,32 @@ export const SalesTable: React.FC<SalesTableProps> = ({ sales }) => {
                       </button>
                     </div>
                   </TableCell>
+                  {(onEdit || onDelete) && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {onEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEdit(sale)}
+                            aria-label={`Editar venta ${index + 1}`}
+                          >
+                            Editar
+                          </Button>
+                        )}
+                        {onDelete && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => onDelete(sale)}
+                            aria-label={`Eliminar venta ${index + 1}`}
+                          >
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               )
             })}
@@ -90,13 +120,41 @@ export const SalesTable: React.FC<SalesTableProps> = ({ sales }) => {
                 <div className="text-lg font-bold text-primary-600 dark:text-primary-400">
                   {formatCurrency(sale.total)}
                 </div>
-                <button
-                  onClick={() => openModal(sale)}
-                  className="w-full text-primary-600 dark:text-primary-300 font-medium text-sm hover:underline"
-                  aria-label={`Ver detalle de la venta ${index + 1}`}
-                >
-                  Ver detalle
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => openModal(sale)}
+                    className="w-full text-primary-600 dark:text-primary-300 font-medium text-sm hover:underline"
+                    aria-label={`Ver detalle de la venta ${index + 1}`}
+                  >
+                    Ver detalle
+                  </button>
+                  {(onEdit || onDelete) && (
+                    <div className="flex gap-2">
+                      {onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(sale)}
+                          fullWidth
+                          aria-label={`Editar venta ${index + 1}`}
+                        >
+                          Editar
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => onDelete(sale)}
+                          fullWidth
+                          aria-label={`Eliminar venta ${index + 1}`}
+                        >
+                          Eliminar
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )

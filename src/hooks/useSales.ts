@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getSales, getSaleById, createSale } from '@/api/sales.api'
+import { getSales, getSaleById, createSale, updateSale, deleteSale } from '@/api/sales.api'
 import type { Sale, CreateSaleRequest } from '@/types/sale'
 
 /**
@@ -34,6 +34,40 @@ export const useCreateSale = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       // Invalidar productos porque el stock cambia
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    }
+  })
+}
+
+/**
+ * Hook para actualizar una venta
+ */
+export const useUpdateSale = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, sale }: { id: string; sale: Partial<CreateSaleRequest> }) =>
+      updateSale(id, sale),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['sales', data.id] })
+      // Invalidar productos porque el stock puede cambiar
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    }
+  })
+}
+
+/**
+ * Hook para eliminar una venta
+ */
+export const useDeleteSale = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteSale(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      // Invalidar productos porque el stock cambia al eliminar la venta
       queryClient.invalidateQueries({ queryKey: ['products'] })
     }
   })

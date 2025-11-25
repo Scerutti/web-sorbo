@@ -25,3 +25,18 @@ export const createSale = async (sale: CreateSaleRequest): Promise<Sale> => {
   return data
 }
 
+/**
+ * Actualiza una venta existente
+ */
+export const updateSale = async (id: string, sale: Partial<CreateSaleRequest>): Promise<Sale> => {
+  const { data } = await axiosPrivate.patch<Sale>(`/sales/${id}`, sale)
+  return data
+}
+
+/**
+ * Elimina una venta
+ */
+export const deleteSale = async (id: string): Promise<void> => {
+  await axiosPrivate.delete(`/sales/${id}`)
+}
+
