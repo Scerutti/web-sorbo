@@ -127,17 +127,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
 
   const computeItemErrors = (items: Array<SaleItemRow & { id: string }>): Record<number, string> => {
     const result: Record<number, string> = {}
-    const quantityByProduct = new Map<string, number>()
-
-    items.forEach(item => {
-      if (item.productId) {
-        quantityByProduct.set(
-          item.productId,
-          (quantityByProduct.get(item.productId) || 0) + item.quantity
-        )
-      }
-    })
-
+    
+    // Validaciones básicas (producto seleccionado, cantidad válida)
     items.forEach((item, index) => {
       if (!item.productId) {
         result[index] = 'Debes seleccionar un producto'
@@ -147,15 +138,124 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         result[index] = 'La cantidad debe ser mayor a 0'
         return
       }
-      if (item.product) {
-        const totalQuantity = quantityByProduct.get(item.product.id) || 0
-        if (totalQuantity > item.product.stock) {
-          result[index] = `Cantidad total excede el stock disponible (${item.product.stock})`
-        }
-      }
     })
 
+    // Si hay errores básicos, no continuar con validación de stock
+    if (Object.keys(result).length > 0) {
+      return result
+    }
+
+    // Validación de stock
+    if (isEditMode && initialSale) {
+      // MODO EDICIÓN: Validar solo diferencias o items nuevos
+      // El backend restaurará el stock de items originales antes de aplicar cambios
+      
+      // Crear mapa de cantidades originales por producto
+      const originalQuantities = new Map<string, number>()
+      initialSale.items.forEach(originalItem => {
+        originalQuantities.set(
+          originalItem.productId,
+          (originalQuantities.get(originalItem.productId) || 0) + originalItem.cantidad
+        )
+      })
+
+      // Crear mapa de cantidades nuevas por producto
+      const newQuantities = new Map<string, number>()
+      items.forEach(item => {
+        if (item.productId) {
+          newQuantities.set(
+            item.productId,
+            (newQuantities.get(item.productId) || 0) + item.quantity
+          )
+        }
+      })
+
+      // Validar cada producto: calcular diferencia y validar contra stock actual
+      newQuantities.forEach((newQty, productId) => {
+        const originalQty = originalQuantities.get(productId) || 0
+        const difference = newQty - originalQty
+        
+        // Si no hay diferencia, no validar (el backend restaurará y volverá a aplicar la misma cantidad)
+        if (difference === 0) {
+          return
+        }
+
+        const product = products.find(p => p.id === productId)
+        if (!product) {
+          return
+        }
+
+        // Calcular stock disponible: stock actual + cantidad a restaurar (si es positiva)
+        const stockAvailable = product.stock + (difference < 0 ? 0 : originalQty)
+        
+        // Si la diferencia es positiva (aumentamos cantidad), validar contra stock disponible
+        if (difference > 0 && difference > stockAvailable) {
+          // Encontrar todos los índices de items con este producto para mostrar el error
+          items.forEach((item, index) => {
+            if (item.productId === productId && !result[index]) {
+              result[index] = `Cantidad excede el stock disponible. Stock actual: ${product.stock}, cantidad original: ${originalQty}, diferencia requerida: ${difference}`
+            }
+          })
+        }
+        // Si la diferencia es negativa (reducimos cantidad), no hay problema de stock
+      })
+
+      // Validar items nuevos (productos que no estaban en la venta original)
+      items.forEach((item, index) => {
+        if (item.productId && item.product && !originalQuantities.has(item.productId)) {
+          // Es un producto nuevo, validar contra stock actual
+          if (item.quantity > item.product.stock) {
+            result[index] = `Cantidad excede el stock disponible (${item.product.stock})`
+          }
+        }
+      })
+    } else {
+      // MODO CREACIÓN: Validar normalmente (suma total de cantidades por producto)
+      const quantityByProduct = new Map<string, number>()
+
+      items.forEach(item => {
+        if (item.productId) {
+          quantityByProduct.set(
+            item.productId,
+            (quantityByProduct.get(item.productId) || 0) + item.quantity
+          )
+        }
+      })
+
+      items.forEach((item, index) => {
+        if (item.product) {
+          const totalQuantity = quantityByProduct.get(item.product.id) || 0
+          if (totalQuantity > item.product.stock) {
+            result[index] = `Cantidad total excede el stock disponible (${item.product.stock})`
+          }
+        }
+      })
+    }
+
     return result
+  }
+
+  // Calcular stock máximo disponible para un item (considerando modo edición)
+  const getMaxStockForItem = (item: SaleItemRow & { id: string }): number | undefined => {
+    if (!item.product) {
+      return undefined
+    }
+
+    if (isEditMode && initialSale) {
+      // En modo edición, verificar si este producto ya estaba en la venta original
+      const originalItem = initialSale.items.find(orig => orig.productId === item.productId)
+      
+      if (originalItem) {
+        // Producto existente: stock disponible = stock actual + cantidad original (que se restaurará)
+        return item.product.stock + originalItem.cantidad
+      } else {
+        // Producto nuevo: usar stock actual
+        return item.product.stock
+      }
+    } else {
+      // Modo creación: usar stock actual
+      return item.product.stock
+    }
   }
 
   const removeItem = (index: number) => {
@@ -389,7 +489,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                     : undefined
                 }
                 min="1"
-                max={item.product?.stock || undefined}
+                max={getMaxStockForItem(item)}
                 required
                 aria-label={`Cantidad del producto ${index + 1}`}
               />
