@@ -40,9 +40,10 @@ export const resetPassword = async (request: ResetPasswordRequest): Promise<void
 
 /**
  * Obtiene el usuario actual autenticado
+ * El backend retorna { user: {...} }, así que extraemos la propiedad user
  */
 export const getCurrentUser = async (): Promise<AuthResponse['user']> => {
-  const { data } = await axiosPrivate.get<AuthResponse['user']>('/auth/me')
-  return data
+  const { data } = await axiosPrivate.get<AuthResponse>('/auth/me')
+  return data.user
 }
 

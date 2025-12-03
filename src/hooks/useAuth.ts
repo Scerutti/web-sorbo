@@ -13,8 +13,11 @@ export const useCurrentUser = () => {
     queryKey: ['auth', 'me'],
     queryFn: getCurrentUser,
     retry: false,
-    staleTime: Infinity,
-    enabled: !!token // Solo ejecutar si hay token
+    staleTime: 0, // Siempre considerar los datos como stale para forzar refetch
+    gcTime: 5 * 60 * 1000, // Mantener en cache por 5 minutos
+    enabled: !!token, // Solo ejecutar si hay token
+    refetchOnMount: true, // Siempre refetch al montar
+    refetchOnWindowFocus: false // No refetch al cambiar de ventana
   })
 }
 
