@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './providers/AuthProvider'
 import { AuthLayout } from './layouts/AuthLayout'
 import { MainLayout } from './layouts/MainLayout'
+import { LogoutOverlay } from './components/ui/LogoutOverlay'
 
 // Lazy load de páginas para code-splitting
 // Convierte named exports a default exports para React.lazy
@@ -132,13 +133,27 @@ function AppRoutes() {
 }
 
 /**
+ * Componente que muestra el overlay de logout si está activo
+ */
+const AppContent: React.FC = () => {
+  const { isLoggingOut } = useAuth()
+  
+  return (
+    <>
+      <AppRoutes />
+      {isLoggingOut && <LogoutOverlay />}
+    </>
+  )
+}
+
+/**
  * Componente principal de la aplicación
  */
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   )

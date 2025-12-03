@@ -8,6 +8,7 @@ interface AuthContextType {
   accessToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isLoggingOut: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
@@ -56,11 +57,12 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       accessToken,
       isAuthenticated,
       isLoading: isLoadingState,
+      isLoggingOut: logoutMutation.isPending,
       login,
       logout,
       resetPassword
     }),
-    [user, accessToken, isAuthenticated, isLoadingState, login, logout, resetPassword]
+    [user, accessToken, isAuthenticated, isLoadingState, logoutMutation.isPending, login, logout, resetPassword]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
