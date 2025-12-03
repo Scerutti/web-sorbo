@@ -162,6 +162,12 @@ export const ProductsPage: React.FC = () => {
 
   const stockSummary = computeStockSummary(productsWithRecalculatedCosts)
 
+  const totalGeneral = useMemo(() => {
+    return productsWithRecalculatedCosts
+      .filter(product => product.stock > 0)
+      .reduce((total, product) => total + (product.precioVenta * product.stock), 0)
+  }, [productsWithRecalculatedCosts])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -192,7 +198,7 @@ export const ProductsPage: React.FC = () => {
         </Button>
       </div>
 
-      <StockSummaryCard summary={stockSummary} />
+      <StockSummaryCard summary={stockSummary} totalGeneral={totalGeneral} />
 
       <ProductFilters
         searchQuery={searchQuery}

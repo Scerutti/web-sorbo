@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales'
 import { useProducts } from '../hooks/useProducts'
 import { useCosts } from '../hooks/useCosts'
@@ -6,6 +6,7 @@ import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
 import { SalesTable } from '../components/sales/SalesTable'
+import { SalesSummaryCard } from '../components/sales/SalesSummaryCard'
 import { CreateSaleModal } from '../components/sales/CreateSaleModal'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
@@ -13,6 +14,30 @@ import { Pagination } from '../components/ui/Pagination'
 import { usePagination } from '../hooks/usePagination'
 import { ITEMS_PER_PAGE } from '../shared/constants'
 import { formatDate, formatCurrency } from '../shared/functions'
+
+/**
+ * Formatea una fecha a formato YYYY-MM-DD para inputs de tipo date
+ */
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Calcula las fechas por defecto: hoy y 30 días antes
+ */
+const getDefaultDates = () => {
+  const today = new Date()
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(today.getDate() - 30)
+  
+  return {
+    dateTo: formatDateForInput(today),
+    dateFrom: formatDateForInput(thirtyDaysAgo)
+  }
+}
 
 /**
  * Página de ventas con filtros por fecha y ordenamiento
@@ -27,12 +52,21 @@ export const SalesPage: React.FC = () => {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
+  // Calcular fechas por defecto una sola vez al montar el componente
+  const defaultDates = useMemo(() => getDefaultDates(), [])
+
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
   const [isMayoristaModal, setIsMayoristaModal] = useState(false)
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(() => {
+    const dates = getDefaultDates()
+    return dates.dateFrom
+  })
+  const [dateTo, setDateTo] = useState(() => {
+    const dates = getDefaultDates()
+    return dates.dateTo
+  })
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const isLoading = isLoadingSales || isLoadingProducts || isLoadingCosts
@@ -71,9 +105,13 @@ export const SalesPage: React.FC = () => {
   }
 
   const clearFilters = () => {
-    setDateFrom('')
-    setDateTo('')
+    setDateFrom(defaultDates.dateFrom)
+    setDateTo(defaultDates.dateTo)
   }
+
+  const totalVentas = useMemo(() => {
+    return filteredSales.reduce((total, sale) => total + sale.total, 0)
+  }, [filteredSales])
 
   const pagination = usePagination(filteredSales, ITEMS_PER_PAGE)
 
@@ -154,6 +192,11 @@ export const SalesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <SalesSummaryCard 
+        totalCantidad={filteredSales.length}
+        totalGeneral={totalVentas}
+      />
 
       <SalesTable 
         sales={pagination.items}
