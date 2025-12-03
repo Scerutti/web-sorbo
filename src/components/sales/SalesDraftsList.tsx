@@ -1,5 +1,5 @@
 import React from 'react'
-import { SaleDraft, deleteDraft } from '../../utils/salesDrafts'
+import { SaleDraft } from '../../utils/salesDrafts'
 import { formatCurrency, formatDate } from '../../shared/functions'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
