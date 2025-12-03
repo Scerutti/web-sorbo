@@ -7,6 +7,7 @@ import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
 import { SalesTable } from '../components/sales/SalesTable'
 import { SalesSummaryCard } from '../components/sales/SalesSummaryCard'
+import { SalesDraftsList } from '../components/sales/SalesDraftsList'
 import { CreateSaleModal } from '../components/sales/CreateSaleModal'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
@@ -14,6 +15,7 @@ import { Pagination } from '../components/ui/Pagination'
 import { usePagination } from '../hooks/usePagination'
 import { ITEMS_PER_PAGE } from '../shared/constants'
 import { formatDate, formatCurrency } from '../shared/functions'
+import { SaleDraft, getDrafts, deleteDraft } from '../utils/salesDrafts'
 
 /**
  * Formatea una fecha a formato YYYY-MM-DD para inputs de tipo date
@@ -59,6 +61,8 @@ export const SalesPage: React.FC = () => {
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
   const [isMayoristaModal, setIsMayoristaModal] = useState(false)
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
+  const [currentDraft, setCurrentDraft] = useState<SaleDraft | undefined>(undefined)
+  const [drafts, setDrafts] = useState<SaleDraft[]>([])
   const [dateFrom, setDateFrom] = useState(() => {
     const dates = getDefaultDates()
     return dates.dateFrom
@@ -70,6 +74,12 @@ export const SalesPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const isLoading = isLoadingSales || isLoadingProducts || isLoadingCosts
+
+  // Cargar borradores al montar
+  useEffect(() => {
+    const loadedDrafts = getDrafts()
+    setDrafts(loadedDrafts)
+  }, [])
 
   useEffect(() => {
     filterAndSortSales()
@@ -198,6 +208,20 @@ export const SalesPage: React.FC = () => {
         totalGeneral={totalVentas}
       />
 
+      <SalesDraftsList
+        drafts={drafts}
+        onContinue={(draft) => {
+          setCurrentDraft(draft)
+          setIsMayoristaModal(draft.saleData.esMayorista)
+          setIsSaleModalOpen(true)
+        }}
+        onDelete={(draftId) => {
+          deleteDraft(draftId)
+          setDrafts(getDrafts())
+          toast.success('Borrador eliminado')
+        }}
+      />
+
       <SalesTable 
         sales={pagination.items}
         onEdit={(sale) => {
@@ -239,6 +263,9 @@ export const SalesPage: React.FC = () => {
           setIsSaleModalOpen(false)
           setIsMayoristaModal(false)
           setEditingSale(null)
+          setCurrentDraft(undefined)
+          // Recargar borradores por si se guardó uno nuevo
+          setDrafts(getDrafts())
         }}
         onSubmit={async (sale) => {
           try {
@@ -259,18 +286,37 @@ export const SalesPage: React.FC = () => {
               await createSaleMutation.mutateAsync(sale)
               toast.success(sale.esMayorista ? 'Venta mayorista creada correctamente' : 'Venta creada correctamente')
             }
+            
+            // Si había un borrador, eliminarlo
+            if (currentDraft) {
+              deleteDraft(currentDraft.id)
+              setDrafts(getDrafts())
+            }
+            
             setIsSaleModalOpen(false)
             setIsMayoristaModal(false)
             setEditingSale(null)
+            setCurrentDraft(undefined)
           } catch (error) {
             console.error(`Error ${editingSale ? 'actualizando' : 'creando'} venta:`, error)
-            toast.error(`Error al ${editingSale ? 'actualizar' : 'crear'} la venta`)
+            // El error ya se maneja en CreateSaleModal y guarda como borrador
+            throw error // Re-lanzar para que CreateSaleModal lo maneje
           }
         }}
         products={products}
         costItems={costItems}
         esMayorista={isMayoristaModal}
         initialSale={editingSale || undefined}
+        draft={currentDraft}
+        onDraftSaved={() => {
+          setDrafts(getDrafts())
+        }}
+        onDraftDeleted={() => {
+          if (currentDraft) {
+            deleteDraft(currentDraft.id)
+            setDrafts(getDrafts())
+          }
+        }}
       />
 
       {ConfirmDialog}

@@ -5,7 +5,9 @@ import { Modal } from '../ui/Modal'
 import { Autocomplete } from '../ui/Autocomplete'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { useAuth } from '../../providers/AuthProvider'
+import { SaleDraft, saveDraft, generateDraftId } from '../../utils/salesDrafts'
 
 interface CreateSaleModalProps {
   isOpen: boolean
@@ -15,6 +17,9 @@ interface CreateSaleModalProps {
   costItems: CostItem[]
   esMayorista?: boolean
   initialSale?: Sale // Para modo edición
+  draft?: SaleDraft // Borrador a cargar
+  onDraftSaved?: () => void // Callback cuando se guarda un borrador
+  onDraftDeleted?: () => void // Callback cuando se elimina un borrador (al confirmar)
 }
 
 interface SaleItemRow {
@@ -41,10 +46,14 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   products,
   costItems,
   esMayorista: initialEsMayorista = false,
-  initialSale
+  initialSale,
+  draft,
+  onDraftSaved,
+  onDraftDeleted
 }) => {
   const { user } = useAuth()
   const isEditMode = !!initialSale
+  const draftIdRef = useRef<string | null>(draft?.id || null)
   
   // Inicializar items desde la venta existente si estamos en modo edición
   const initializeItems = (): Array<SaleItemRow & { id: string }> => {
@@ -63,6 +72,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   const [esMayorista, setEsMayorista] = useState(initialSale?.esMayorista ?? initialEsMayorista)
   const [errors, setErrors] = useState<Partial<Record<number | 'general', string>>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [showExitConfirmDialog, setShowExitConfirmDialog] = useState(false)
+  const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false)
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Resetear formulario al abrir/cerrar
@@ -78,14 +89,27 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         }))
         setSaleItems(items.length > 0 ? items : [createEmptyItem()])
         setEsMayorista(initialSale.esMayorista)
+        draftIdRef.current = null // No usar borrador en modo edición
+      } else if (draft && products.length > 0) {
+        // Cargar borrador
+        const items = draft.saleData.items.map((item, index) => ({
+          id: `item-draft-${index}`,
+          productId: item.productId,
+          quantity: item.quantity,
+          product: products.find(p => p.id === item.productId) || null
+        }))
+        setSaleItems(items.length > 0 ? items : [createEmptyItem()])
+        setEsMayorista(draft.saleData.esMayorista)
+        draftIdRef.current = draft.id
       } else {
         // Modo creación: resetear
         setSaleItems([createEmptyItem()])
         setEsMayorista(initialEsMayorista)
+        draftIdRef.current = null
       }
       setErrors({})
     }
-  }, [isOpen, initialEsMayorista, initialSale, products])
+  }, [isOpen, initialEsMayorista, initialSale, draft, products])
 
   const availableProducts = products.filter(p => p.stock > 0)
 
@@ -300,6 +324,40 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
     return Object.keys(itemErrors).length === 0
   }
 
+  // Guardar borrador si hay datos válidos
+  const saveCurrentDraft = (): boolean => {
+    const validItems = saleItems.filter(item => item.product && item.quantity > 0)
+    if (validItems.length === 0) {
+      return false
+    }
+
+    const draftItems = validItems.map(item => ({
+      productId: item.product!.id,
+      productNombre: item.product!.nombre,
+      quantity: item.quantity,
+      precioUnitario: esMayorista 
+        ? getFinancials(item.product!).precioVentaMayorista 
+        : getFinancials(item.product!).precioVenta
+    }))
+
+    const draft: SaleDraft = {
+      id: draftIdRef.current || generateDraftId(),
+      fecha: new Date().toISOString(),
+      saleData: {
+        items: draftItems,
+        esMayorista,
+        total: calculateTotal()
+      }
+    }
+
+    saveDraft(draft)
+    draftIdRef.current = draft.id
+    if (onDraftSaved) {
+      onDraftSaved()
+    }
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -346,15 +404,67 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         vendedorId: user?.id
       })
 
+      // Si había un borrador, eliminarlo
+      if (draftIdRef.current && onDraftDeleted) {
+        onDraftDeleted()
+      }
+
       // Resetear y cerrar
       setSaleItems([createEmptyItem()])
       setErrors({})
+      draftIdRef.current = null
       onClose()
     } catch (error: any) {
-      setErrors({ general: error.message || 'Error al crear la venta' })
+      // Si falla, guardar como borrador
+      const saved = saveCurrentDraft()
+      if (saved) {
+        setErrors({ general: `${error.message || 'Error al crear la venta'}. La venta se guardó como borrador.` })
+      } else {
+        setErrors({ general: error.message || 'Error al crear la venta' })
+      }
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Verificar si hay datos válidos para guardar
+  const hasValidDataToSave = () => {
+    return saleItems.some(item => item.product && item.quantity > 0)
+  }
+
+  // Manejar cierre con X (guardar borrador)
+  const handleCloseX = () => {
+    if (hasValidDataToSave()) {
+      // Mostrar diálogo de confirmación
+      setShowExitConfirmDialog(true)
+    } else {
+      // Si no hay datos válidos, cerrar directamente
+      onClose()
+    }
+  }
+
+  // Confirmar salir y guardar borrador
+  const handleConfirmExit = () => {
+    saveCurrentDraft()
+    onClose()
+    setShowExitConfirmDialog(false)
+  }
+
+  // Manejar cancelar (no guardar borrador)
+  const handleCancel = () => {
+    if (hasValidDataToSave()) {
+      // Mostrar diálogo de confirmación
+      setShowCancelConfirmDialog(true)
+    } else {
+      // Si no hay datos válidos, cerrar directamente
+      onClose()
+    }
+  }
+
+  // Confirmar cancelar y perder datos
+  const handleConfirmCancel = () => {
+    onClose()
+    setShowCancelConfirmDialog(false)
   }
 
   const total = calculateTotal()
@@ -364,10 +474,10 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   return (
       <Modal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleCloseX}
         title={isEditMode 
           ? (esMayorista ? "Editar Venta Mayorista" : "Editar Venta")
-          : (esMayorista ? "Nueva Venta Mayorista" : "Nueva Venta")
+          : (draft ? "Continuar Borrador" : (esMayorista ? "Nueva Venta Mayorista" : "Nueva Venta"))
         }
         size="lg"
       >
@@ -522,7 +632,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         </div>
 
         <div className="flex gap-4 justify-end pt-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button
@@ -538,6 +648,30 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Diálogo de confirmación para salir y guardar borrador */}
+      <ConfirmDialog
+        isOpen={showExitConfirmDialog}
+        onClose={() => setShowExitConfirmDialog(false)}
+        onConfirm={handleConfirmExit}
+        title="¿Salir y guardar como borrador?"
+        message="Si sales ahora, la venta se guardará como borrador y podrás continuarla más tarde. ¿Deseas salir?"
+        confirmText="Sí, salir"
+        cancelText="Quedarse"
+        variant="warning"
+      />
+
+      {/* Diálogo de confirmación para cancelar */}
+      <ConfirmDialog
+        isOpen={showCancelConfirmDialog}
+        onClose={() => setShowCancelConfirmDialog(false)}
+        onConfirm={handleConfirmCancel}
+        title="¿Cancelar la carga de venta?"
+        message="Si cancelas, todos los datos ingresados se perderán y no se guardará ningún borrador. ¿Estás seguro?"
+        confirmText="Sí, cancelar"
+        cancelText="Continuar"
+        variant="danger"
+      />
     </Modal>
   )
 }
