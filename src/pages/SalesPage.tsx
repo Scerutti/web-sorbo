@@ -91,17 +91,20 @@ export const SalesPage: React.FC = () => {
     if (dateFrom) {
       filtered = filtered.filter(sale => {
         const saleDate = new Date(sale.fecha)
-        const fromDate = new Date(dateFrom)
-        return saleDate >= fromDate
+        const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate())
+        const [year, month, day] = dateFrom.split('-').map(Number)
+        const fromDateOnly = new Date(year, month - 1, day)
+        return saleDateOnly >= fromDateOnly
       })
     }
 
     if (dateTo) {
       filtered = filtered.filter(sale => {
         const saleDate = new Date(sale.fecha)
-        const toDate = new Date(dateTo)
-        toDate.setHours(23, 59, 59, 999)
-        return saleDate <= toDate
+        const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate())
+        const [year, month, day] = dateTo.split('-').map(Number)
+        const toDateOnly = new Date(year, month - 1, day)
+        return saleDateOnly <= toDateOnly
       })
     }
 
