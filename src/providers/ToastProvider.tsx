@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from 'react'
 import { ToastContainer, type Toast, type ToastType } from '../components/ui/Toast'
+import { initToastManager } from '../shared/toastManager'
 
 interface ToastContextType {
   showToast: (message: string, type?: ToastType, duration?: number) => void
@@ -15,7 +16,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
  * Provider de toasts
  * Maneja el estado de todas las notificaciones toast
  */
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const removeToast = useCallback((id: string) => {
@@ -49,13 +50,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     showToast(message, 'info', duration)
   }, [showToast])
 
-  const value: ToastContextType = {
-    showToast,
-    success,
-    error,
-    warning,
-    info
-  }
+  // Inicializar toastManager para que los interceptors de Axios puedan usar toasts
+  useEffect(() => {
+    initToastManager(showToast)
+  }, [showToast])
+
+  const value: ToastContextType = useMemo(
+    () => ({
+      showToast,
+      success,
+      error,
+      warning,
+      info
+    }),
+    [showToast, success, error, warning, info]
+  )
 
   return (
     <ToastContext.Provider value={value}>

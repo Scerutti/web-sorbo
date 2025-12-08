@@ -49,7 +49,13 @@ export const LoginPage: React.FC = () => {
       await login(email, password)
       navigate('/dashboard')
     } catch (error: any) {
-      setGeneralError(error.message || 'Error al iniciar sesión')
+      // Mostrar mensaje más amigable para errores de timeout
+      // El toast ya mostró el mensaje específico, aquí solo mostramos un mensaje genérico
+      if (error.message?.includes('timeout') || error.code === 'ECONNABORTED') {
+        setGeneralError('El servidor está tardando en responder. Por favor, intenta nuevamente.')
+      } else {
+        setGeneralError(error.message || 'Error al iniciar sesión')
+      }
     } finally {
       setIsLoading(false)
     }

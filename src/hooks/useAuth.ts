@@ -29,6 +29,7 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: (credentials: LoginRequest) => login(credentials),
+    retry: false, // No reintentar automáticamente en caso de error
     onSuccess: (data) => {
       // Actualizar cache con el usuario
       queryClient.setQueryData(['auth', 'me'], data.user)
