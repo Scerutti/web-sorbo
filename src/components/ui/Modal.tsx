@@ -8,6 +8,11 @@ interface ModalProps {
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
   showCloseButton?: boolean
+  /**
+   * Optional additional elements rendered in the header next to title,
+   * typically buttons such as "Export" that should appear before the close icon.
+   */
+  headerActions?: React.ReactNode
 }
 
 /**
@@ -19,7 +24,8 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   size = 'md',
-  showCloseButton = true
+  showCloseButton = true,
+  headerActions
 }) => {
   const sizes = {
     sm: 'max-w-md',
@@ -68,17 +74,20 @@ export const Modal: React.FC<ModalProps> = ({
                   <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {title}
                   </span>
-                  {showCloseButton && (
-                    <button
-                      onClick={onClose}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-                      aria-label="Cerrar"
-                    >
-                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {headerActions}
+                    {showCloseButton && (
+                      <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                        aria-label="Cerrar"
+                      >
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </Dialog.Title>
 
                 <div className="px-6 py-4">

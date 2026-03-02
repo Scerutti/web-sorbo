@@ -5,6 +5,8 @@ import { Table, TableHeader, TableHead, TableRow, TableCell } from '../ui/Table'
 import { Badge } from '../ui/Badge'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { exportSaleToExcel } from '../../api/sales.api'
+import { toastManager } from '../../shared/toastManager'
 
 interface SalesTableProps {
   sales: Sale[]
@@ -19,10 +21,24 @@ interface SalesTableProps {
  */
 export const SalesTable: React.FC<SalesTableProps> = ({ sales, onEdit, onDelete }) => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [isExporting, setIsExporting] = useState(false);
 
   const openModal = (sale: Sale) => setSelectedSale(sale)
   const closeModal = () => setSelectedSale(null)
   const selectedSaleIndex = selectedSale ? sales.findIndex(current => current.id === selectedSale.id) + 1 : null
+
+  const handleExport = async (saleId: string) => {
+  try {
+    setIsExporting(true);
+    await exportSaleToExcel(saleId);
+    toastManager.success('Excel generado correctamente');
+  } catch (error) {
+    console.error('Error exportando:', error);
+    toastManager.error('No se pudo generar el Excel');
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -170,6 +186,19 @@ export const SalesTable: React.FC<SalesTableProps> = ({ sales, onEdit, onDelete 
             : 'Detalle de Venta'
         }
         size="lg"
+        headerActions={
+          selectedSale && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleExport(selectedSale.id)}
+              isLoading={isExporting}
+              aria-label="Exportar detalle de venta"
+            >
+              {isExporting ? 'Generando...' : 'Exportar detalle'}
+            </Button>
+          )
+        }
       >
         {selectedSale && (
           <div className="space-y-4">
