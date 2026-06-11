@@ -7,6 +7,7 @@ export interface CostItem {
   nombre: string
   tipo: CostType
   valor: number
+  componentes?: string[]
   descripcion?: string
   createdAt?: string
   updatedAt?: string
@@ -15,7 +16,8 @@ export interface CostItem {
 export interface CreateCostRequest {
   nombre: string
   tipo: CostType
-  valor: number
+  valor?: number
+  componentes?: string[]
   descripcion?: string
 }
 
@@ -23,6 +25,7 @@ export interface UpdateCostRequest {
   nombre?: string
   tipo?: CostType
   valor?: number
+  componentes?: string[]
   descripcion?: string
 }
 

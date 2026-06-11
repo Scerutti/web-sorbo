@@ -1,4 +1,5 @@
 import { toastManager } from '../shared/toastManager'
+import { triggerBlobDownload } from '../shared/functions'
 import { axiosPrivate } from './http'
 import type { Sale, CreateSaleRequest } from '@/types/sale'
 
@@ -53,30 +54,8 @@ export const exportSaleToExcel = async (id: string): Promise<void> => {
       }
     });
 
-    const blob = new Blob([response.data], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-    
-    const contentDisposition = response.headers['content-disposition'];
-    let fileName = `venta_${id}.xlsx`;
-    
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?([^"]+)"?/);
-      if (match && match[1]) fileName = match[1];
-    }
+    triggerBlobDownload(response, `venta_${id}.xlsx`);
 
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-    
   } catch (error) {
     console.error('Error en la descarga:', error);
     toastManager.error('Error al descargar el archivo. Revisa la consola.');

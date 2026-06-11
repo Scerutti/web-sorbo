@@ -20,6 +20,7 @@ export interface CostItem {
   nombre: string
   tipo: CostType
   valor: number
+  componentes?: string[]
   descripcion?: string
 }
 

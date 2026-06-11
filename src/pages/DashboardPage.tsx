@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { MOCK_EXPENSES } from '../mocks/expenses'
 import { PRODUCT_TYPES } from '../shared/types'
 import { useProducts, useCreateProduct } from '../hooks/useProducts'
-import { useSales, useCreateSale } from '../hooks/useSales'
+import { useCreateSale } from '../hooks/useSales'
 import { useCosts } from '../hooks/useCosts'
+import { useGanancias } from '../hooks/useExpenses'
 import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
 import { computeStockSummary } from '../shared/functions'
@@ -21,8 +21,8 @@ import { ProductFormModal } from '../components/products/ProductFormModal'
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth()
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
-  const { data: sales = [], isLoading: isLoadingSales } = useSales()
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
+  const { data: ganancias, isLoading: isLoadingGanancias } = useGanancias()
   const createSaleMutation = useCreateSale()
   const createProductMutation = useCreateProduct()
   const toast = useToast()
@@ -30,7 +30,7 @@ export const DashboardPage: React.FC = () => {
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
 
-  const isLoading = isLoadingProducts || isLoadingSales || isLoadingCosts
+  const isLoading = isLoadingProducts || isLoadingCosts || isLoadingGanancias
 
   const stockSummary = computeStockSummary(products)
   const displayName = user?.name || 'Usuario'
@@ -77,7 +77,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <PieChartGainsExpenses sales={sales} expenses={MOCK_EXPENSES} />
+        <PieChartGainsExpenses ganancias={ganancias} />
       </div>
 
       {/* Modals */}

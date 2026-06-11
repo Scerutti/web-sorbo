@@ -233,6 +233,40 @@ export function recalculateProductFinancials(
 }
 
 /**
+ * Dispara la descarga de un archivo binario (ej. Excel) recibido por axios.
+ * Lee el nombre desde el header Content-Disposition si está disponible.
+ * @param response - Respuesta de axios con responseType 'blob'
+ * @param fallbackName - Nombre por defecto si no viene en el header
+ * @param mimeType - Tipo MIME del blob (default: xlsx)
+ */
+export function triggerBlobDownload(
+  response: { data: BlobPart; headers: Record<string, unknown> },
+  fallbackName: string,
+  mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+): void {
+  const blob = new Blob([response.data], { type: mimeType })
+
+  const contentDisposition = response.headers['content-disposition']
+  let fileName = fallbackName
+  if (typeof contentDisposition === 'string') {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/)
+    if (match && match[1]) fileName = match[1]
+  }
+
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+
+  setTimeout(() => {
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }, 100)
+}
+
+/**
  * Función helper para expresiones condicionales que evita warnings de SonarQube
  * sobre ternarios anidados.
  * 

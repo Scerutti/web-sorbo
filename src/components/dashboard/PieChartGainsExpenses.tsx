@@ -1,34 +1,33 @@
 import React, { useMemo } from 'react'
 import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts'
-import { Sale, Expense } from '../../shared/types'
+import type { Ganancias } from '@/types/expenses'
 import { ChartWrapper } from '../ui/ChartWrapper'
 import { formatCurrency } from '../../shared/functions'
 
 interface PieChartGainsExpensesProps {
-  sales: Sale[]
-  expenses: Expense[]
+  /** Datos reales de ganancias (ingresos por ventas vs egresos reales). */
+  ganancias?: Ganancias
 }
 
 /**
- * Gráfico de pie mostrando gastos vs ganancias
+ * Gráfico de pie mostrando gastos vs ganancias usando información real:
+ * - "Ganancias" = ingresos por ventas (módulo Sales).
+ * - "Gastos" = egresos reales (gastos fijos + variables + inversiones).
  */
 export const PieChartGainsExpenses: React.FC<PieChartGainsExpensesProps> = ({
-  sales,
-  expenses
+  ganancias
 }) => {
-  const data = useMemo(() => {
-    const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0)
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const totalGains = ganancias?.ingresos ?? 0
+  const totalExpenses = ganancias?.egresosTotal ?? 0
+  const netProfit = ganancias?.gananciaNeta ?? totalGains - totalExpenses
 
-    return [
-      { name: 'Ganancias', value: totalSales, color: '#10b981' },
+  const data = useMemo(
+    () => [
+      { name: 'Ganancias', value: totalGains, color: '#10b981' },
       { name: 'Gastos', value: totalExpenses, color: '#ef4444' }
-    ]
-  }, [sales, expenses])
-
-  const totalGains = data[0]?.value || 0
-  const totalExpenses = data[1]?.value || 0
-  const netProfit = totalGains - totalExpenses
+    ],
+    [totalGains, totalExpenses]
+  )
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -80,4 +79,3 @@ export const PieChartGainsExpenses: React.FC<PieChartGainsExpensesProps> = ({
     </div>
   )
 }
-

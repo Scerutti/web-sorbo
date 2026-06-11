@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { CostItem, CostType } from '../../shared/types'
+import { useGastosBase } from '../../hooks/useExpenses'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
 import { Button } from '../ui/Button'
+import { formatCurrency } from '../../shared/functions'
 
 /**
- * Modal para crear/editar costos operativos.
+ * Modal para crear/editar costos.
+ * Un costo puede componerse seleccionando 1+ Gastos Base (se suman sus
+ * valorUnitario automáticamente). Si no se selecciona ninguno, se ingresa el
+ * valor a mano (retrocompatibilidad).
  * Autor: Equipo Sorbo Sabores
  */
 interface CostFormModalProps {
@@ -30,9 +35,12 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
   onSubmit,
   initialCost
 }) => {
+  const { data: gastos = [] } = useGastosBase()
+
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState<CostType>('general')
   const [valor, setValor] = useState('')
+  const [componentes, setComponentes] = useState<string[]>([])
   const [descripcion, setDescripcion] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -42,7 +50,9 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
       setNombre(initialCost.nombre)
       setTipo(initialCost.tipo)
       setValor(initialCost.valor.toString())
+      setComponentes(initialCost.componentes ?? [])
       setDescripcion(initialCost.descripcion || '')
+      setErrors({})
     } else {
       resetForm()
     }
@@ -52,8 +62,24 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
     setNombre('')
     setTipo('general')
     setValor('')
+    setComponentes([])
     setDescripcion('')
     setErrors({})
+  }
+
+  const isComposed = componentes.length > 0
+
+  // Suma en vivo de los valorUnitario de los gastos base seleccionados.
+  const valorCompuesto = useMemo(() => {
+    return gastos
+      .filter((gasto) => componentes.includes(gasto.id))
+      .reduce((acc, gasto) => acc + gasto.valorUnitario, 0)
+  }, [gastos, componentes])
+
+  const toggleComponente = (id: string) => {
+    setComponentes((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    )
   }
 
   const validate = () => {
@@ -63,9 +89,11 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
       newErrors.nombre = 'El nombre es obligatorio'
     }
 
-    const valueNumber = parseFloat(valor)
-    if (isNaN(valueNumber) || valueNumber <= 0) {
-      newErrors.valor = 'El valor debe ser mayor a 0'
+    if (!isComposed) {
+      const valueNumber = parseFloat(valor)
+      if (isNaN(valueNumber) || valueNumber <= 0) {
+        newErrors.valor = 'Ingresá un valor mayor a 0 o seleccioná gastos base'
+      }
     }
 
     setErrors(newErrors)
@@ -81,13 +109,16 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
       await onSubmit({
         nombre: nombre.trim(),
         tipo,
-        valor: parseFloat(valor),
+        // El backend recalcula el valor si hay componentes; enviamos la suma
+        // calculada para coherencia inmediata de la UI.
+        valor: isComposed ? valorCompuesto : parseFloat(valor),
+        componentes,
         descripcion: descripcion.trim() || undefined
       })
       resetForm()
       onClose()
     } catch (error: any) {
-      setErrors({ general: error.message || 'Error al guardar el costo' })
+      setErrors({ general: error?.message || 'Error al guardar el costo' })
     } finally {
       setIsLoading(false)
     }
@@ -129,15 +160,64 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
           aria-label="Tipo de costo"
         />
 
+        {/* Composición por gastos base */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Componer con Gastos Base
+            </span>
+            {isComposed && (
+              <span className="text-sm font-semibold text-primary-600 dark:text-primary-300">
+                {formatCurrency(valorCompuesto)}
+              </span>
+            )}
+          </div>
+
+          {gastos.length === 0 ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              No hay gastos base cargados. Cargalos en “Control de Gastos/Ingresos”
+              o ingresá el valor a mano abajo.
+            </p>
+          ) : (
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {gastos.map((gasto) => (
+                <label
+                  key={gasto.id}
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={componentes.includes(gasto.id)}
+                      onChange={() => toggleComponente(gasto.id)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    {gasto.nombre}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatCurrency(gasto.valorUnitario)}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
         <Input
           type="number"
-          label="Valor"
-          value={valor}
+          label={isComposed ? 'Valor (calculado de los gastos base)' : 'Valor'}
+          value={isComposed ? valorCompuesto.toFixed(2) : valor}
           onChange={(event) => setValor(event.target.value)}
           error={errors.valor}
           min="0"
           step="0.01"
-          required
+          disabled={isComposed}
+          required={!isComposed}
+          helperText={
+            isComposed
+              ? 'Se recalcula automáticamente al cambiar los gastos base.'
+              : undefined
+          }
           aria-label="Valor del costo"
         />
 
@@ -161,5 +241,3 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
     </Modal>
   )
 }
-
-

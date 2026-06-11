@@ -4,6 +4,9 @@ export * from './user'
 export * from './product'
 export * from './cost'
 export * from './sale'
+export * from './gastoBase'
+export * from './inversion'
+export * from './expenses'
 
 // Common types
 export type StockStatus = 'good' | 'low' | 'out'
