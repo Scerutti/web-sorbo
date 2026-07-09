@@ -11,6 +11,7 @@ export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
 export interface Product {
   id: string
   nombre: string
+  descripcion?: string
   tipo: ProductType
   precioCosto: number
   porcentajeGanancia: number
@@ -26,6 +27,7 @@ export interface Product {
 
 export interface CreateProductRequest {
   nombre: string
+  descripcion?: string
   tipo: ProductType
   precioCosto: number
   porcentajeGanancia: number
@@ -35,6 +37,7 @@ export interface CreateProductRequest {
 
 export interface UpdateProductRequest {
   nombre?: string
+  descripcion?: string
   tipo?: ProductType
   precioCosto?: number
   porcentajeGanancia?: number

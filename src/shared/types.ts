@@ -27,6 +27,7 @@ export interface CostItem {
 export interface Product {
   id: string
   nombre: string
+  descripcion?: string
   tipo: ProductType
   precioCosto: number
   porcentajeGanancia: number

@@ -27,6 +27,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   costItems
 }) => {
   const [nombre, setNombre] = useState('')
+  const [descripcion, setDescripcion] = useState('')
   const [tipo, setTipo] = useState<ProductType | ''>('')
   const [precioCosto, setPrecioCosto] = useState('')
   const [porcentajeGanancia, setPorcentajeGanancia] = useState('50')
@@ -38,6 +39,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   useEffect(() => {
     if (initialProduct) {
       setNombre(initialProduct.nombre)
+      setDescripcion(initialProduct.descripcion ?? '')
       setTipo(initialProduct.tipo)
       setPrecioCosto(initialProduct.precioCosto.toString())
       setPorcentajeGanancia(initialProduct.porcentajeGanancia.toString())
@@ -50,6 +52,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const resetForm = () => {
     setNombre('')
+    setDescripcion('')
     setTipo('')
     setPrecioCosto('')
     setPorcentajeGanancia('50')
@@ -121,6 +124,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     try {
       await onSubmit({
         nombre: nombre.trim(),
+        descripcion: descripcion.trim() || undefined,
         tipo: tipo as ProductType,
         precioCosto: parseFloat(precioCosto),
         porcentajeGanancia: parseFloat(porcentajeGanancia),
@@ -167,6 +171,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           error={errors.nombre}
           required
           aria-label="Nombre del producto"
+        />
+
+        <Input
+          label="Descripción"
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          aria-label="Descripción del producto"
         />
 
         <Select
