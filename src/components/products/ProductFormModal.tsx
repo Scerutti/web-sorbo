@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { CostItem, Product, ProductType, PRODUCT_TYPE_LABEL } from '../../shared/types'
+import { CostItem, Product, TipoCosto } from '../../shared/types'
+import type { CreateProductRequest } from '@/types/product'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
@@ -9,9 +10,13 @@ import { calculateApplicableCosts, calculateProductSalePrice } from '../../share
 interface ProductFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (product: Omit<Product, 'id' | 'soldCount' | 'costos' | 'precioVenta' | 'precioVentaMayorista'>) => Promise<void>
+  onSubmit: (product: CreateProductRequest) => Promise<void>
   initialProduct?: Product | null
-  productTypes: ProductType[]
+  /**
+   * TODOS los tipos de costo. Los globales (aplicaATodos) no son elegibles
+   * en el desplegable, pero hacen falta para calcular el preview.
+   */
+  tiposCosto: TipoCosto[]
   costItems: CostItem[]
 }
 
@@ -23,12 +28,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   onClose,
   onSubmit,
   initialProduct,
-  productTypes,
+  tiposCosto,
   costItems
 }) => {
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
-  const [tipo, setTipo] = useState<ProductType | ''>('')
+  const [tipoId, setTipoId] = useState('')
   const [precioCosto, setPrecioCosto] = useState('')
   const [porcentajeGanancia, setPorcentajeGanancia] = useState('50')
   const [porcentajeGananciaMayorista, setPorcentajeGananciaMayorista] = useState('0')
@@ -40,7 +45,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     if (initialProduct) {
       setNombre(initialProduct.nombre)
       setDescripcion(initialProduct.descripcion ?? '')
-      setTipo(initialProduct.tipo)
+      setTipoId(initialProduct.tipoId)
       setPrecioCosto(initialProduct.precioCosto.toString())
       setPorcentajeGanancia(initialProduct.porcentajeGanancia.toString())
       setPorcentajeGananciaMayorista((initialProduct.porcentajeGananciaMayorista || 0).toString())
@@ -53,7 +58,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const resetForm = () => {
     setNombre('')
     setDescripcion('')
-    setTipo('')
+    setTipoId('')
     setPrecioCosto('')
     setPorcentajeGanancia('50')
     setPorcentajeGananciaMayorista('0')
@@ -68,8 +73,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       newErrors.nombre = 'El nombre es requerido'
     }
 
-    if (!tipo) {
-      newErrors.tipo = 'El tipo es requerido'
+    if (!tipoId) {
+      newErrors.tipoId = 'El tipo es requerido'
     }
 
     const cost = parseFloat(precioCosto)
@@ -96,10 +101,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     return Object.keys(newErrors).length === 0
   }
 
+  // Preview en vivo: replica la regla del backend para mostrar el precio
+  // antes de guardar. Una vez guardado, el valor autoritativo es el que
+  // devuelve la API en `producto.costos`.
   const costosAplicados = useMemo(() => {
-    if (!tipo) return 0
-    return calculateApplicableCosts(costItems, tipo)
-  }, [costItems, tipo])
+    if (!tipoId) return 0
+    return calculateApplicableCosts(costItems, tiposCosto, tipoId)
+  }, [costItems, tiposCosto, tipoId])
 
   const precioVentaCalculado = useMemo(() => {
     const base = parseFloat(precioCosto) || 0
@@ -125,7 +133,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       await onSubmit({
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
-        tipo: tipo as ProductType,
+        tipoId,
         precioCosto: parseFloat(precioCosto),
         porcentajeGanancia: parseFloat(porcentajeGanancia),
         porcentajeGananciaMayorista: parseFloat(porcentajeGananciaMayorista) || 0,
@@ -145,10 +153,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     onClose()
   }
 
-  const typeOptions = productTypes.map(t => ({
-    value: t,
-    label: PRODUCT_TYPE_LABEL[t]
-  }))
+  // Elegibles: solo los tipos asignables. Los globales aplican solos.
+  const typeOptions = tiposCosto
+    .filter(tipo => !tipo.aplicaATodos)
+    .map(tipo => ({
+      value: tipo.id,
+      label: tipo.nombre
+    }))
 
   return (
     <Modal
@@ -182,11 +193,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
         <Select
           label="Tipo"
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as ProductType)}
+          value={tipoId}
+          onChange={(e) => setTipoId(e.target.value)}
           options={typeOptions}
-          error={errors.tipo}
+          error={errors.tipoId}
           placeholder="Seleccionar tipo"
+          helperText={
+            typeOptions.length === 0
+              ? 'No hay tipos asignables. Creá uno en "Tipos de Costo".'
+              : undefined
+          }
           required
           aria-label="Tipo de producto"
         />
@@ -239,7 +255,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           aria-label="Stock disponible"
         />
 
-        {tipo && (
+        {tipoId && (
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">Costos aplicados</span>

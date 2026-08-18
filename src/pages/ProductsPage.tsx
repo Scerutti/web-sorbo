@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { ProductType, PRODUCT_TYPE_LABEL, PRODUCT_TYPES } from '../shared/types'
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useProducts'
 import { useCosts } from '../hooks/useCosts'
+import { useTiposCosto } from '../hooks/useTiposCosto'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
-import { computeStockSummary, debounce, computeStockStatus, formatCurrency, recalculateProductFinancials, iif } from '../shared/functions'
-import type { Product } from '@/types'
+import { computeStockSummary, debounce, computeStockStatus, formatCurrency, iif } from '../shared/functions'
+import type { CreateProductRequest, Product } from '@/types'
 import { StockSummaryCard } from '../components/dashboard/StockSummaryCard'
 import { ProductFilters } from '../components/products/ProductFilters'
 import { ProductTableRow } from '../components/products/ProductTableRow'
@@ -23,6 +23,7 @@ import { ITEMS_PER_PAGE } from '../shared/constants'
 export const ProductsPage: React.FC = () => {
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
+  const { data: tiposCosto = [], isLoading: isLoadingTipos } = useTiposCosto()
   const createProductMutation = useCreateProduct()
   const updateProductMutation = useUpdateProduct()
   const deleteProductMutation = useDeleteProduct()
@@ -31,26 +32,28 @@ export const ProductsPage: React.FC = () => {
 
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<ProductType | ''>('')
+  const [selectedType, setSelectedType] = useState('')
   const [sortBy, setSortBy] = useState<'nombre' | 'stock'>('nombre')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  const isLoading = isLoadingProducts || isLoadingCosts
+  const isLoading = isLoadingProducts || isLoadingCosts || isLoadingTipos
 
-  // Recalcular costos de productos basados en los costos disponibles
-  const productsWithRecalculatedCosts = useMemo(() => {
-    if (costItems.length === 0) return products
-    return products.map(product => 
-      recalculateProductFinancials(product, costItems)
-    )
-  }, [products, costItems])
+  // `costos` y `precioVenta` los calcula el backend; acá no se recalcula nada.
+  const productsWithRecalculatedCosts = products
 
-  const availableProductTypes = useMemo(() => {
-    const presentTypes = new Set(productsWithRecalculatedCosts.map(p => p.tipo))
-    return PRODUCT_TYPES.filter(type => presentTypes.has(type))
-  }, [productsWithRecalculatedCosts])
+  // Tipos asignables a un producto: los que no aplican a todos.
+  const tiposAsignables = useMemo(
+    () => tiposCosto.filter(tipo => !tipo.aplicaATodos),
+    [tiposCosto]
+  )
+
+  // Para el filtro, sólo los tipos que algún producto realmente usa.
+  const tiposEnUso = useMemo(() => {
+    const presentTypes = new Set(products.map(p => p.tipoId))
+    return tiposAsignables.filter(tipo => presentTypes.has(tipo.id))
+  }, [products, tiposAsignables])
 
   const debouncedSearch = useMemo(
     () => debounce((query: string) => {
@@ -73,7 +76,7 @@ export const ProductsPage: React.FC = () => {
     filterProducts(searchQuery, selectedType)
   }, [selectedType, productsWithRecalculatedCosts])
 
-  const filterProducts = (query: string, type: ProductType | '') => {
+  const filterProducts = (query: string, type: string) => {
     let filtered = [...productsWithRecalculatedCosts]
 
     if (query.trim()) {
@@ -83,7 +86,7 @@ export const ProductsPage: React.FC = () => {
     }
 
     if (type) {
-      filtered = filtered.filter(p => p.tipo === type)
+      filtered = filtered.filter(p => p.tipoId === type)
     }
 
     setFilteredProducts(filtered)
@@ -141,9 +144,7 @@ export const ProductsPage: React.FC = () => {
     }
   }
 
-  const handleSubmit = async (
-    productData: Omit<Product, 'id' | 'soldCount' | 'costos' | 'precioVenta' | 'precioVentaMayorista'>
-  ) => {
+  const handleSubmit = async (productData: CreateProductRequest) => {
     try {
       if (editingProduct) {
         await updateProductMutation.mutateAsync({ id: editingProduct.id, product: productData })
@@ -205,7 +206,7 @@ export const ProductsPage: React.FC = () => {
         onSearchChange={setSearchQuery}
         selectedType={selectedType}
         onTypeChange={(value) => setSelectedType(value)}
-        productTypes={availableProductTypes}
+        tiposCosto={tiposEnUso}
       />
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -351,7 +352,7 @@ export const ProductsPage: React.FC = () => {
                           {product.nombre}
                         </h3>
                         <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Tipo: {PRODUCT_TYPE_LABEL[product.tipo]}
+                          Tipo: {product.tipoNombre || '—'}
                         </div>
                       </div>
                       <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
@@ -424,7 +425,7 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
         initialProduct={editingProduct}
-        productTypes={PRODUCT_TYPES}
+        tiposCosto={tiposCosto}
         costItems={costItems}
       />
 

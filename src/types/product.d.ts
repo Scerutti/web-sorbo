@@ -1,21 +1,15 @@
-export type ProductType = 'blend' | 'caja' | 'gin'
-
-export const PRODUCT_TYPES: ProductType[] = ['blend', 'caja', 'gin']
-
-export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
-  blend: 'Blend',
-  caja: 'Caja',
-  gin: 'Gin'
-}
-
 export interface Product {
   id: string
   nombre: string
   descripcion?: string
-  tipo: ProductType
+  /** Tipo de costo asignado: determina qué costos se le suman. */
+  tipoId: string
+  /** Nombre del tipo, resuelto por el backend. */
+  tipoNombre: string
   precioCosto: number
   porcentajeGanancia: number
   porcentajeGananciaMayorista: number
+  /** Suma de los costos aplicables. La calcula el backend. */
   costos: number
   precioVenta: number
   precioVentaMayorista: number
@@ -28,7 +22,7 @@ export interface Product {
 export interface CreateProductRequest {
   nombre: string
   descripcion?: string
-  tipo: ProductType
+  tipoId: string
   precioCosto: number
   porcentajeGanancia: number
   porcentajeGananciaMayorista: number
@@ -38,10 +32,9 @@ export interface CreateProductRequest {
 export interface UpdateProductRequest {
   nombre?: string
   descripcion?: string
-  tipo?: ProductType
+  tipoId?: string
   precioCosto?: number
   porcentajeGanancia?: number
   porcentajeGananciaMayorista?: number
   stock?: number
 }
-

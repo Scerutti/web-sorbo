@@ -1,11 +1,9 @@
-import { ProductType } from './product'
-
-export type CostType = 'general' | ProductType | 'amortizable'
-
 export interface CostItem {
   id: string
   nombre: string
-  tipo: CostType
+  tipoId: string
+  /** Nombre del tipo, resuelto por el backend. */
+  tipoNombre: string
   valor: number
   componentes?: string[]
   descripcion?: string
@@ -15,7 +13,7 @@ export interface CostItem {
 
 export interface CreateCostRequest {
   nombre: string
-  tipo: CostType
+  tipoId: string
   valor?: number
   componentes?: string[]
   descripcion?: string
@@ -23,9 +21,8 @@ export interface CreateCostRequest {
 
 export interface UpdateCostRequest {
   nombre?: string
-  tipo?: CostType
+  tipoId?: string
   valor?: number
   componentes?: string[]
   descripcion?: string
 }
-

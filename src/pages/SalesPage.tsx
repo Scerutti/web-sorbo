@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales'
 import { useProducts } from '../hooks/useProducts'
-import { useCosts } from '../hooks/useCosts'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
@@ -47,7 +46,6 @@ const getDefaultDates = () => {
 export const SalesPage: React.FC = () => {
   const { data: sales = [], isLoading: isLoadingSales } = useSales()
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
-  const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
   const createSaleMutation = useCreateSale()
   const updateSaleMutation = useUpdateSale()
   const deleteSaleMutation = useDeleteSale()
@@ -73,7 +71,7 @@ export const SalesPage: React.FC = () => {
   })
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const isLoading = isLoadingSales || isLoadingProducts || isLoadingCosts
+  const isLoading = isLoadingSales || isLoadingProducts
 
   // Cargar borradores al montar
   useEffect(() => {
@@ -307,7 +305,6 @@ export const SalesPage: React.FC = () => {
           }
         }}
         products={products}
-        costItems={costItems}
         esMayorista={isMayoristaModal}
         initialSale={editingSale || undefined}
         draft={currentDraft}

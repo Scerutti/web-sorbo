@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { CostItem, Product, SaleItem, Sale } from '../../shared/types'
-import { formatCurrency, calculateApplicableCosts, calculateProductSalePrice } from '../../shared/functions'
+import { Product, SaleItem, Sale } from '../../shared/types'
+import { formatCurrency } from '../../shared/functions'
 import { Modal } from '../ui/Modal'
 import { Autocomplete } from '../ui/Autocomplete'
 import { Input } from '../ui/Input'
@@ -14,7 +14,6 @@ interface CreateSaleModalProps {
   onClose: () => void
   onSubmit: (sale: Omit<Sale, 'id'>) => Promise<void>
   products: Product[]
-  costItems: CostItem[]
   esMayorista?: boolean
   initialSale?: Sale // Para modo edición
   draft?: SaleDraft // Borrador a cargar
@@ -44,7 +43,6 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   onClose,
   onSubmit,
   products,
-  costItems,
   esMayorista: initialEsMayorista = false,
   initialSale,
   draft,
@@ -118,22 +116,17 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
     label: `${product.nombre} (Stock: ${product.stock})`
   }))
 
+  // El backend ya devuelve costos, precioVenta y precioVentaMayorista con los
+  // costos aplicables incluidos; acá sólo se leen.
   const getFinancials = (product: Product | null) => {
     if (!product) {
       return { costos: 0, precioVenta: 0, precioVentaMayorista: 0 }
     }
-    const costosAplicados = calculateApplicableCosts(costItems, product.tipo)
-    const precioVenta = calculateProductSalePrice(
-      product.precioCosto,
-      costosAplicados,
-      product.porcentajeGanancia
-    )
-    const precioVentaMayorista = calculateProductSalePrice(
-      product.precioCosto,
-      costosAplicados,
-      product.porcentajeGananciaMayorista || 0
-    )
-    return { costos: costosAplicados, precioVenta, precioVentaMayorista }
+    return {
+      costos: product.costos,
+      precioVenta: product.precioVenta,
+      precioVentaMayorista: product.precioVentaMayorista
+    }
   }
 
   const addItem = () => {
