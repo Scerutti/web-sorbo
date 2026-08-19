@@ -1,5 +1,5 @@
 import React from 'react'
-import { Product, PRODUCT_TYPE_LABEL } from '../../shared/types'
+import { Product } from '../../shared/types'
 import { formatCurrency } from '../../shared/functions'
 
 interface LeastSellingListProps {
@@ -51,7 +51,7 @@ export const LeastSellingList: React.FC<LeastSellingListProps> = ({
                   {product.nombre}
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {PRODUCT_TYPE_LABEL[product.tipo]}
+                  {product.tipoNombre || '—'}
                 </div>
               </div>
             </div>

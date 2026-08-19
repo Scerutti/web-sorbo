@@ -1,4 +1,4 @@
-import { CostItem, Product, ProductType, StockStatus, StockSummary } from './types'
+import { CostItem, Product, StockStatus, StockSummary, TipoCosto } from './types'
 import { STOCK_THRESHOLDS } from './constants'
 
 /**
@@ -182,14 +182,30 @@ export function calculateProfitMargin(salePrice: number, costPrice: number): num
 }
 
 /**
- * Calcula la sumatoria de costos aplicables para un producto según su tipo.
+ * Calcula la sumatoria de costos aplicables a un producto.
+ *
+ * Aplican los costos de tipos marcados como `aplicaATodos` mas los del tipo
+ * propio del producto. Es la misma regla que usa el backend en ProductsService;
+ * se replica en el cliente SOLO para el preview en vivo del formulario de
+ * producto, antes de guardar. Todo lo ya persistido usa `producto.costos` tal
+ * como viene de la API.
+ *
  * @param costs - Lista de costos disponibles
- * @param tipoProducto - Tipo del producto
+ * @param tiposCosto - Lista de tipos de costo (para saber cuales son globales)
+ * @param tipoIdProducto - Tipo de costo asignado al producto
  * @returns Sumatoria de costos aplicables
  */
-export function calculateApplicableCosts(costs: CostItem[], tipoProducto: ProductType): number {
+export function calculateApplicableCosts(
+  costs: CostItem[],
+  tiposCosto: TipoCosto[],
+  tipoIdProducto: string
+): number {
+  const tiposGlobales = new Set(
+    tiposCosto.filter(tipo => tipo.aplicaATodos).map(tipo => tipo.id)
+  )
+
   return costs
-    .filter(cost => cost.tipo === 'general' || cost.tipo === tipoProducto || cost.tipo === 'amortizable')
+    .filter(cost => tiposGlobales.has(cost.tipoId) || cost.tipoId === tipoIdProducto)
     .reduce((acc, cost) => acc + cost.valor, 0)
 }
 
@@ -208,28 +224,6 @@ export function calculateProductSalePrice(
   const base = precioCosto + costos
   const precioVenta = base + base * (porcentajeGanancia / 100)
   return Math.round((precioVenta + Number.EPSILON) * 100) / 100
-}
-
-/**
- * Recalcula los campos derivados de un producto (costos y precio de venta).
- * @param producto - Producto a recalcular
- * @param costosDisponibles - Lista de costos disponibles
- * @returns Producto actualizado con campos derivados recalculados
- */
-export function recalculateProductFinancials(
-  producto: Pick<Product, 'tipo' | 'precioCosto' | 'porcentajeGanancia' | 'porcentajeGananciaMayorista'> & Partial<Omit<Product, 'tipo' | 'precioCosto' | 'porcentajeGanancia' | 'porcentajeGananciaMayorista' | 'costos' | 'precioVenta' | 'precioVentaMayorista'>>,
-  costosDisponibles: CostItem[]
-): Product {
-  const costosAplicados = calculateApplicableCosts(costosDisponibles, producto.tipo)
-  const precioVenta = calculateProductSalePrice(producto.precioCosto, costosAplicados, producto.porcentajeGanancia)
-  const precioVentaMayorista = calculateProductSalePrice(producto.precioCosto, costosAplicados, producto.porcentajeGananciaMayorista || 0)
-
-  return {
-    ...producto,
-    costos: costosAplicados,
-    precioVenta,
-    precioVentaMayorista
-  } as Product
 }
 
 /**

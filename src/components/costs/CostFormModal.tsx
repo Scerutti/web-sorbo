@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CostItem, CostType } from '../../shared/types'
+import { CostItem } from '../../shared/types'
+import type { CreateCostRequest } from '@/types/cost'
 import { useGastosBase } from '../../hooks/useExpenses'
+import { useTiposCosto } from '../../hooks/useTiposCosto'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
@@ -17,17 +19,9 @@ import { formatCurrency } from '../../shared/functions'
 interface CostFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (cost: Omit<CostItem, 'id'>) => Promise<void>
+  onSubmit: (cost: CreateCostRequest) => Promise<void>
   initialCost?: CostItem | null
 }
-
-const COST_TYPE_OPTIONS: Array<{ value: CostType; label: string }> = [
-  { value: 'general', label: 'General' },
-  { value: 'blend', label: 'Blend' },
-  { value: 'caja', label: 'Caja' },
-  { value: 'gin', label: 'Gin' },
-  { value: 'amortizable', label: 'Amortizable' }
-]
 
 export const CostFormModal: React.FC<CostFormModalProps> = ({
   isOpen,
@@ -36,9 +30,10 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
   initialCost
 }) => {
   const { data: gastos = [] } = useGastosBase()
+  const { data: tiposCosto = [] } = useTiposCosto()
 
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<CostType>('general')
+  const [tipoId, setTipoId] = useState('')
   const [valor, setValor] = useState('')
   const [componentes, setComponentes] = useState<string[]>([])
   const [descripcion, setDescripcion] = useState('')
@@ -48,7 +43,7 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
   useEffect(() => {
     if (initialCost) {
       setNombre(initialCost.nombre)
-      setTipo(initialCost.tipo)
+      setTipoId(initialCost.tipoId)
       setValor(initialCost.valor.toString())
       setComponentes(initialCost.componentes ?? [])
       setDescripcion(initialCost.descripcion || '')
@@ -60,12 +55,17 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
 
   const resetForm = () => {
     setNombre('')
-    setTipo('general')
+    setTipoId('')
     setValor('')
     setComponentes([])
     setDescripcion('')
     setErrors({})
   }
+
+  const tipoOptions = useMemo(
+    () => tiposCosto.map((tipo) => ({ value: tipo.id, label: tipo.nombre })),
+    [tiposCosto]
+  )
 
   const isComposed = componentes.length > 0
 
@@ -89,6 +89,10 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
       newErrors.nombre = 'El nombre es obligatorio'
     }
 
+    if (!tipoId) {
+      newErrors.tipoId = 'El tipo de costo es obligatorio'
+    }
+
     if (!isComposed) {
       const valueNumber = parseFloat(valor)
       if (isNaN(valueNumber) || valueNumber <= 0) {
@@ -108,7 +112,7 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
     try {
       await onSubmit({
         nombre: nombre.trim(),
-        tipo,
+        tipoId,
         // El backend recalcula el valor si hay componentes; enviamos la suma
         // calculada para coherencia inmediata de la UI.
         valor: isComposed ? valorCompuesto : parseFloat(valor),
@@ -154,9 +158,17 @@ export const CostFormModal: React.FC<CostFormModalProps> = ({
 
         <Select
           label="Tipo de Costo"
-          value={tipo}
-          onChange={(event) => setTipo(event.target.value as CostType)}
-          options={COST_TYPE_OPTIONS}
+          value={tipoId}
+          onChange={(event) => setTipoId(event.target.value)}
+          options={tipoOptions}
+          placeholder="Seleccioná un tipo"
+          error={errors.tipoId}
+          helperText={
+            tipoOptions.length === 0
+              ? 'No hay tipos de costo cargados. Creá uno en "Tipos de Costo".'
+              : undefined
+          }
+          required
           aria-label="Tipo de costo"
         />
 

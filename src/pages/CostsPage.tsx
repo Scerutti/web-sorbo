@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CostType, PRODUCT_TYPE_LABEL } from '../shared/types'
 import { useCosts, useCreateCost, useUpdateCost, useDeleteCost } from '../hooks/useCosts'
+import { useTiposCosto } from '../hooks/useTiposCosto'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
-import type { CostItem } from '@/types'
+import type { CostItem, CreateCostRequest } from '@/types'
 import { CostFormModal } from '../components/costs/CostFormModal'
 import { CostTableRow } from '../components/costs/CostTableRow'
 import { Table, TableHeader, TableHead, TableRow } from '../components/ui/Table'
@@ -19,6 +19,7 @@ import { formatCurrency } from '../shared/functions'
  */
 export const CostsPage: React.FC = () => {
   const { data: costs = [], isLoading } = useCosts()
+  const { data: tiposCosto = [] } = useTiposCosto()
   const createCostMutation = useCreateCost()
   const updateCostMutation = useUpdateCost()
   const deleteCostMutation = useDeleteCost()
@@ -29,16 +30,12 @@ export const CostsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCost, setEditingCost] = useState<CostItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<CostType | ''>('')
+  const [selectedType, setSelectedType] = useState('')
 
   const typeOptions: Array<{ value: string; label: string }> = useMemo(() => [
     { value: '', label: 'Todos los tipos' },
-    { value: 'general', label: 'General' },
-    { value: 'blend', label: 'Blend' },
-    { value: 'caja', label: 'Caja' },
-    { value: 'gin', label: 'Gin' },
-    { value: 'amortizable', label: 'Amortizable' }
-  ], [])
+    ...tiposCosto.map(tipo => ({ value: tipo.id, label: tipo.nombre }))
+  ], [tiposCosto])
 
   useEffect(() => {
     if (costs.length > 0) {
@@ -59,7 +56,7 @@ export const CostsPage: React.FC = () => {
     }
 
     if (selectedType) {
-      result = result.filter(cost => cost.tipo === selectedType)
+      result = result.filter(cost => cost.tipoId === selectedType)
     }
 
     setFilteredCosts(result)
@@ -95,7 +92,7 @@ export const CostsPage: React.FC = () => {
     }
   }
 
-  const handleSubmit = async (payload: Omit<CostItem, 'id'>) => {
+  const handleSubmit = async (payload: CreateCostRequest) => {
     try {
       if (editingCost) {
         await updateCostMutation.mutateAsync({ id: editingCost.id, cost: payload })
@@ -114,17 +111,12 @@ export const CostsPage: React.FC = () => {
 
   const totalCost = filteredCosts.reduce((acc, cost) => acc + cost.valor, 0)
 
-  // Determinar el título basado en el tipo seleccionado
+  // El título sigue al tipo filtrado, usando su nombre real.
   const pageTitle = useMemo(() => {
     if (!selectedType) return 'Costos'
-    
-    if (selectedType === 'general') return 'Costos Generales'
-    if (selectedType === 'amortizable') return 'Costos Amortizables'
-    if (selectedType === 'blend' || selectedType === 'caja' || selectedType === 'gin') {
-      return PRODUCT_TYPE_LABEL[selectedType]
-    }
-    return 'Costos'
-  }, [selectedType])
+    const tipo = tiposCosto.find(t => t.id === selectedType)
+    return tipo ? `Costos: ${tipo.nombre}` : 'Costos'
+  }, [selectedType, tiposCosto])
 
   if (isLoading) {
     return (
@@ -181,7 +173,7 @@ export const CostsPage: React.FC = () => {
           <Select
             label="Filtrar por tipo"
             value={selectedType}
-            onChange={(event) => setSelectedType(event.target.value as CostType | '')}
+            onChange={(event) => setSelectedType(event.target.value)}
             options={typeOptions}
           />
         </div>
@@ -233,7 +225,7 @@ export const CostsPage: React.FC = () => {
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">{cost.nombre}</h3>
                       <Badge variant="info">
-                        {typeOptions.find(option => option.value === cost.tipo)?.label || cost.tipo}
+                        {cost.tipoNombre || 'Sin tipo'}
                       </Badge>
                     </div>
                     <div className="text-right text-lg font-semibold text-primary-600 dark:text-primary-300">

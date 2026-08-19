@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { PRODUCT_TYPES } from '../shared/types'
 import { useProducts, useCreateProduct } from '../hooks/useProducts'
 import { useCreateSale } from '../hooks/useSales'
 import { useCosts } from '../hooks/useCosts'
+import { useTiposCosto } from '../hooks/useTiposCosto'
 import { useGanancias } from '../hooks/useExpenses'
 import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
@@ -22,6 +22,7 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuth()
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
+  const { data: tiposCosto = [] } = useTiposCosto()
   const { data: ganancias, isLoading: isLoadingGanancias } = useGanancias()
   const createSaleMutation = useCreateSale()
   const createProductMutation = useCreateProduct()
@@ -95,7 +96,6 @@ export const DashboardPage: React.FC = () => {
           }
         }}
         products={products}
-        costItems={costItems}
       />
 
       <ProductFormModal
@@ -112,7 +112,7 @@ export const DashboardPage: React.FC = () => {
           }
         }}
         initialProduct={null}
-        productTypes={PRODUCT_TYPES}
+        tiposCosto={tiposCosto}
         costItems={costItems}
       />
     </div>

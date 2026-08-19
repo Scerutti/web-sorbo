@@ -1,5 +1,5 @@
 import React from 'react'
-import { Product, PRODUCT_TYPE_LABEL } from '../../shared/types'
+import { Product } from '../../shared/types'
 import { formatCurrency, computeStockStatus } from '../../shared/functions'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -26,7 +26,7 @@ export const ProductTableRow: React.FC<ProductTableRowProps> = ({
     out: { variant: 'danger' as const, label: 'Sin stock' }
   }[stockStatus]
 
-  const tipoLabel = PRODUCT_TYPE_LABEL[product.tipo]
+  const tipoLabel = product.tipoNombre || '—'
 
   return (
     <tr className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">

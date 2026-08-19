@@ -1,14 +1,14 @@
 import React from 'react'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
-import { ProductType, PRODUCT_TYPE_LABEL } from '../../shared/types'
+import { TipoCosto } from '../../shared/types'
 
 interface ProductFiltersProps {
   searchQuery: string
   onSearchChange: (value: string) => void
-  selectedType: ProductType | ''
-  onTypeChange: (value: ProductType | '') => void
-  productTypes: ProductType[]
+  selectedType: string
+  onTypeChange: (value: string) => void
+  tiposCosto: TipoCosto[]
 }
 
 /**
@@ -19,11 +19,11 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   onSearchChange,
   selectedType,
   onTypeChange,
-  productTypes
+  tiposCosto
 }) => {
   const typeOptions = [
     { value: '', label: 'Todos los tipos' },
-    ...productTypes.map(type => ({ value: type, label: PRODUCT_TYPE_LABEL[type] }))
+    ...tiposCosto.map(tipo => ({ value: tipo.id, label: tipo.nombre }))
   ]
 
   return (
@@ -41,7 +41,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
         <Select
           label="Filtrar por tipo"
           value={selectedType}
-          onChange={(e) => onTypeChange(e.target.value as ProductType | '')}
+          onChange={(e) => onTypeChange(e.target.value)}
           options={typeOptions}
           aria-label="Filtrar por tipo de producto"
         />

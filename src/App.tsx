@@ -14,6 +14,7 @@ const ProductsPage = lazy(() => import('./pages/ProductsPage').then(module => ({
 const SalesPage = lazy(() => import('./pages/SalesPage').then(module => ({ default: module.SalesPage })))
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(module => ({ default: module.ExpensesPage })))
 const CostsPage = lazy(() => import('./pages/CostsPage').then(module => ({ default: module.CostsPage })))
+const TiposCostoPage = lazy(() => import('./pages/TiposCostoPage').then(module => ({ default: module.TiposCostoPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
 
 // Componente de loading para Suspense
@@ -120,6 +121,7 @@ function AppRoutes() {
           <Route path="/sales" element={<SalesPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/costs" element={<CostsPage />} />
+          <Route path="/tipos-costo" element={<TiposCostoPage />} />
         </Route>
 
         {/* Redirects */}

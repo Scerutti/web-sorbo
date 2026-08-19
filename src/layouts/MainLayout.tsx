@@ -27,6 +27,7 @@ export const MainLayout: React.FC = () => {
     { path: '/products', label: 'Productos' },
     { path: '/sales', label: 'Ventas' },
     { path: '/costs', label: 'Costos' },
+    { path: '/tipos-costo', label: 'Tipos de Costo' },
     { path: '/expenses', label: 'Control de Gastos/Ingresos' }
   ]
 

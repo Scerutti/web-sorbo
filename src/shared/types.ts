@@ -1,43 +1,16 @@
 /**
  * Tipos compartidos del dominio de Sorbo Sabores.
+ *
+ * Las entidades de dominio (Product, CostItem, TipoCosto) viven en `src/types/`
+ * y se re-exportan acá para que los componentes que importan desde
+ * `../shared/types` y la capa de api/hooks que importa desde `@/types` usen
+ * exactamente la misma definición.
  * Autor: Equipo Sorbo Sabores
  */
 
-export type ProductType = 'blend' | 'caja' | 'gin'
-
-export type CostType = 'general' | ProductType | 'amortizable'
-
-export const PRODUCT_TYPES: ProductType[] = ['blend', 'caja', 'gin']
-
-export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
-  blend: 'Blend',
-  caja: 'Caja',
-  gin: 'Gin'
-}
-
-export interface CostItem {
-  id: string
-  nombre: string
-  tipo: CostType
-  valor: number
-  componentes?: string[]
-  descripcion?: string
-}
-
-export interface Product {
-  id: string
-  nombre: string
-  descripcion?: string
-  tipo: ProductType
-  precioCosto: number
-  porcentajeGanancia: number
-  porcentajeGananciaMayorista: number
-  costos: number
-  precioVenta: number
-  precioVentaMayorista: number
-  stock: number
-  soldCount: number
-}
+export type { Product } from '@/types/product'
+export type { CostItem } from '@/types/cost'
+export type { TipoCosto } from '@/types/tipoCosto'
 
 export interface SaleCostSnapshot {
   precioCosto: number
@@ -94,4 +67,3 @@ export interface StockSummary {
   lowPercentage: number
   outPercentage: number
 }
-
