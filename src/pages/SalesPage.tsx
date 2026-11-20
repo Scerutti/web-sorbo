@@ -5,7 +5,7 @@ import { useSaldos } from '../hooks/useStock'
 import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
-import type { Sale } from '@/types'
+import type { Sale, Product } from '@/types'
 import { SalesTable } from '../components/sales/SalesTable'
 import { SalesSummaryCard } from '../components/sales/SalesSummaryCard'
 import { SalesDraftsList } from '../components/sales/SalesDraftsList'
@@ -45,9 +45,16 @@ const getDefaultDates = () => {
 /**
  * Página de ventas con filtros por fecha y ordenamiento
  */
+// Valor por defecto estable para las consultas sin datos. Un `= []` en el
+// destructuring crea un arreglo nuevo en cada render; si ese arreglo es
+// dependencia de un efecto que hace setState, el componente entra en un
+// bucle infinito mientras la consulta carga o falla.
+const SIN_VENTAS: Sale[] = []
+const SIN_PRODUCTOS: Product[] = []
+
 export const SalesPage: React.FC = () => {
-  const { data: sales = [], isLoading: isLoadingSales } = useSales()
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts()
+  const { data: sales = SIN_VENTAS, isLoading: isLoadingSales } = useSales()
+  const { data: products = SIN_PRODUCTOS, isLoading: isLoadingProducts } = useProducts()
   const createSaleMutation = useCreateSale()
   const updateSaleMutation = useUpdateSale()
   const deleteSaleMutation = useDeleteSale()

@@ -14,6 +14,8 @@ interface SectorTableRowProps {
   sector: Sector
   productosConSaldo: number
   unidades: number
+  /** Nombres de los usuarios que operan en el sector. */
+  usuarios: string[]
   onEdit: (sector: Sector) => void
   onDelete: (id: string) => void
 }
@@ -22,6 +24,7 @@ export const SectorTableRow: React.FC<SectorTableRowProps> = ({
   sector,
   productosConSaldo,
   unidades,
+  usuarios,
   onEdit,
   onDelete
 }) => {
@@ -42,6 +45,13 @@ export const SectorTableRow: React.FC<SectorTableRowProps> = ({
           <Badge variant="success">Activo</Badge>
         ) : (
           <Badge variant="default">Inactivo</Badge>
+        )}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+        {usuarios.length > 0 ? (
+          usuarios.join(', ')
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500">Sin usuarios</span>
         )}
       </td>
       <td className="px-4 py-3 text-right text-gray-900 dark:text-gray-100">

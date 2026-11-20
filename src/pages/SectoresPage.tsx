@@ -7,6 +7,7 @@ import {
   useDeleteSector
 } from '../hooks/useSectores'
 import { useSaldos } from '../hooks/useStock'
+import { useUsers } from '../hooks/useUsers'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
 import { SectorFormModal } from '../components/sectores/SectorFormModal'
@@ -23,6 +24,7 @@ import { Button } from '../components/ui/Button'
 export const SectoresPage: React.FC = () => {
   const { data: sectores = [], isLoading } = useSectores()
   const { data: saldos = [] } = useSaldos()
+  const { data: usuarios = [] } = useUsers()
   const createSectorMutation = useCreateSector()
   const updateSectorMutation = useUpdateSector()
   const deleteSectorMutation = useDeleteSector()
@@ -45,6 +47,18 @@ export const SectoresPage: React.FC = () => {
     })
     return acc
   }, [saldos])
+
+  // Quién opera en cada sector, para verlo sin ir a la tabla de usuarios.
+  const usuariosPorSector = useMemo(() => {
+    const acc = new Map<string, string[]>()
+    usuarios.forEach(usuario => {
+      if (!usuario.sectorId) return
+      const nombres = acc.get(usuario.sectorId) ?? []
+      nombres.push(usuario.name || usuario.email)
+      acc.set(usuario.sectorId, nombres)
+    })
+    return acc
+  }, [usuarios])
 
   const handleCreate = () => {
     setEditingSector(null)
@@ -123,13 +137,9 @@ export const SectoresPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 id="titulo-sectores" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Sectores
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Cada sector maneja su propio stock. Los usuarios se asignan a uno y
-            sus ventas descuentan de ese saldo.
-          </p>
+          </h2>
         </div>
         <Button variant="primary" onClick={handleCreate}>
           Nuevo Sector
@@ -142,6 +152,7 @@ export const SectoresPage: React.FC = () => {
             <TableHeader>
               <TableHead>Sector</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Usuarios</TableHead>
               <TableHead align="right">Productos con stock</TableHead>
               <TableHead align="right">Unidades</TableHead>
               <TableHead>Acciones</TableHead>
@@ -150,7 +161,7 @@ export const SectoresPage: React.FC = () => {
               {sectores.length === 0 ? (
                 <TableRow>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                   >
                     Todavía no hay sectores. Creá el primero para poder cargar
@@ -166,6 +177,7 @@ export const SectoresPage: React.FC = () => {
                       sector={sector}
                       productosConSaldo={resumen?.productos ?? 0}
                       unidades={resumen?.unidades ?? 0}
+                      usuarios={usuariosPorSector.get(sector.id) ?? []}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                     />

@@ -115,9 +115,9 @@ export const UsuariosPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 id="titulo-usuarios" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Usuarios
-          </h1>
+          </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             {usuarios.length} usuario(s), {admins} con rol de administrador.
           </p>

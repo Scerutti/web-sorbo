@@ -15,9 +15,8 @@ const SalesPage = lazy(() => import('./pages/SalesPage').then(module => ({ defau
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(module => ({ default: module.ExpensesPage })))
 const CostsPage = lazy(() => import('./pages/CostsPage').then(module => ({ default: module.CostsPage })))
 const TiposCostoPage = lazy(() => import('./pages/TiposCostoPage').then(module => ({ default: module.TiposCostoPage })))
-const SectoresPage = lazy(() => import('./pages/SectoresPage').then(module => ({ default: module.SectoresPage })))
+const SectoresUsuariosPage = lazy(() => import('./pages/SectoresUsuariosPage').then(module => ({ default: module.SectoresUsuariosPage })))
 const StockPage = lazy(() => import('./pages/StockPage').then(module => ({ default: module.StockPage })))
-const UsuariosPage = lazy(() => import('./pages/UsuariosPage').then(module => ({ default: module.UsuariosPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
 
 // Componente de loading para Suspense
@@ -140,8 +139,9 @@ function AppRoutes() {
           <Route path="/costs" element={<CostsPage />} />
           <Route path="/tipos-costo" element={<TiposCostoPage />} />
           <Route path="/stock" element={<StockPage />} />
-          <Route path="/sectores" element={<AdminRoute><SectoresPage /></AdminRoute>} />
-          <Route path="/usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+          <Route path="/sectores" element={<AdminRoute><SectoresUsuariosPage /></AdminRoute>} />
+          {/* Usuarios vive dentro de Sectores; la ruta vieja sigue andando */}
+          <Route path="/usuarios" element={<Navigate to="/sectores" replace />} />
         </Route>
 
         {/* Redirects */}

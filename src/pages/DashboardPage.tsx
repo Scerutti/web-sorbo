@@ -131,12 +131,14 @@ export const DashboardPage: React.FC = () => {
         onClose={() => setIsProductModalOpen(false)}
         onSubmit={async (productData) => {
           try {
-            await createProductMutation.mutateAsync(productData)
+            const creado = await createProductMutation.mutateAsync(productData)
             toast.success('Producto creado correctamente')
             setIsProductModalOpen(false)
-          } catch (error) {
+            return creado
+          } catch (error: any) {
             console.error('Error creando producto:', error)
-            toast.error('Error al crear el producto')
+            toast.error(error?.response?.data?.message || 'Error al crear el producto')
+            return undefined
           }
         }}
         initialProduct={null}

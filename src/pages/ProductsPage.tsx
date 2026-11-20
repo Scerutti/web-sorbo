@@ -4,7 +4,7 @@ import { useCosts } from '../hooks/useCosts'
 import { useTiposCosto } from '../hooks/useTiposCosto'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
-import { computeStockSummary, debounce, computeStockStatus, formatCurrency, iif } from '../shared/functions'
+import { computeStockSummary, computeStockStatus, formatCurrency, iif } from '../shared/functions'
 import type { CreateProductRequest, Product } from '@/types'
 import { StockSummaryCard } from '../components/dashboard/StockSummaryCard'
 import { ProductFilters } from '../components/products/ProductFilters'
@@ -20,8 +20,14 @@ import { ITEMS_PER_PAGE } from '../shared/constants'
 /**
  * Página de productos con filtros, búsqueda, ordenamiento y paginación
  */
+// Valor por defecto estable para las consultas sin datos. Un `= []` en el
+// destructuring crea un arreglo nuevo en cada render; si ese arreglo es
+// dependencia de un efecto que hace setState, el componente entra en un
+// bucle infinito mientras la consulta carga o falla.
+const SIN_PRODUCTOS: Product[] = []
+
 export const ProductsPage: React.FC = () => {
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts()
+  const { data: products = SIN_PRODUCTOS, isLoading: isLoadingProducts } = useProducts()
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
   const { data: tiposCosto = [], isLoading: isLoadingTipos } = useTiposCosto()
   const createProductMutation = useCreateProduct()
@@ -30,7 +36,6 @@ export const ProductsPage: React.FC = () => {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState('')
   const [sortBy, setSortBy] = useState<'nombre' | 'stock'>('nombre')
@@ -55,42 +60,24 @@ export const ProductsPage: React.FC = () => {
     return tiposAsignables.filter(tipo => presentTypes.has(tipo.id))
   }, [products, tiposAsignables])
 
-  const debouncedSearch = useMemo(
-    () => debounce((query: string) => {
-      filterProducts(query, selectedType)
-    }, 300),
-    [selectedType]
-  )
-
+  // La búsqueda espera 300 ms a que se deje de tipear.
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   useEffect(() => {
-    if (productsWithRecalculatedCosts.length > 0) {
-      setFilteredProducts(productsWithRecalculatedCosts)
-    }
-  }, [productsWithRecalculatedCosts])
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-  useEffect(() => {
-    debouncedSearch(searchQuery)
-  }, [searchQuery, debouncedSearch])
-
-  useEffect(() => {
-    filterProducts(searchQuery, selectedType)
-  }, [selectedType, productsWithRecalculatedCosts])
-
-  const filterProducts = (query: string, type: string) => {
-    let filtered = [...productsWithRecalculatedCosts]
-
-    if (query.trim()) {
-      filtered = filtered.filter(p =>
-        p.nombre.toLowerCase().includes(query.toLowerCase())
-      )
-    }
-
-    if (type) {
-      filtered = filtered.filter(p => p.tipoId === type)
-    }
-
-    setFilteredProducts(filtered)
-  }
+  // La lista filtrada se deriva, no se guarda en estado. Antes un debounce
+  // armado en la primera render guardaba la lista vacía de ese momento y,
+  // 300 ms después, pisaba la tabla con [] si los productos ya habían llegado.
+  const filteredProducts = useMemo(() => {
+    const query = debouncedQuery.trim().toLowerCase()
+    return productsWithRecalculatedCosts.filter(
+      p =>
+        (!query || p.nombre.toLowerCase().includes(query)) &&
+        (!selectedType || p.tipoId === selectedType)
+    )
+  }, [productsWithRecalculatedCosts, debouncedQuery, selectedType])
 
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
@@ -147,18 +134,18 @@ export const ProductsPage: React.FC = () => {
 
   const handleSubmit = async (productData: CreateProductRequest) => {
     try {
-      if (editingProduct) {
-        await updateProductMutation.mutateAsync({ id: editingProduct.id, product: productData })
-        toast.success('Producto actualizado correctamente')
-      } else {
-        await createProductMutation.mutateAsync(productData)
-        toast.success('Producto creado correctamente')
-      }
+      const guardado = editingProduct
+        ? await updateProductMutation.mutateAsync({ id: editingProduct.id, product: productData })
+        : await createProductMutation.mutateAsync(productData)
+      toast.success(editingProduct ? 'Producto actualizado correctamente' : 'Producto creado correctamente')
       setIsModalOpen(false)
       setEditingProduct(null)
-    } catch (error) {
+      // El modal usa el id para cargar el stock por sector.
+      return guardado
+    } catch (error: any) {
       console.error('Error guardando producto:', error)
-      toast.error('Error al guardar el producto')
+      toast.error(error?.response?.data?.message || 'Error al guardar el producto')
+      return undefined
     }
   }
 
