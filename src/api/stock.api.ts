@@ -4,6 +4,7 @@ import type {
   StockResumen,
   MovimientoStock,
   CreateMovimientoRequest,
+  FijarSaldosRequest,
   StockQuery,
   MovimientosQuery
 } from '@/types/stock'
@@ -53,5 +54,18 @@ export const createMovimiento = async (
     '/stock/movimientos',
     movimiento
   )
+  return data
+}
+
+/**
+ * Fija el reparto de un producto entre sectores en un solo request. Requiere
+ * rol admin. Devuelve los saldos del producto ya actualizados. Responde 409
+ * si un sector inactivo tendría que recibir, o si el saldo cambió mientras
+ * se editaba (por ejemplo, una venta); en ese caso no se aplica nada.
+ */
+export const fijarSaldos = async (
+  request: FijarSaldosRequest
+): Promise<StockSector[]> => {
+  const { data } = await axiosPrivate.put<StockSector[]>('/stock/saldos', request)
   return data
 }

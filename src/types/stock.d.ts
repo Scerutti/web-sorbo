@@ -49,6 +49,20 @@ export interface MovimientoStock {
  * mueven. En ajuste es el saldo final que debe quedar en el sector: el
  * backend calcula el delta contra el saldo actual y registra ese delta.
  */
+/**
+ * Reparto completo de un producto: el saldo final de cada sector. El backend
+ * registra las transferencias, entradas y ajustes que llevan a esos saldos.
+ */
+export interface FijarSaldosRequest {
+  productId: string
+  /**
+   * `cantidad` es el saldo final. `esperado` es el saldo que el usuario tenía
+   * en pantalla: si en la base ya es otro (entró una venta mientras editaba),
+   * el backend responde 409 en vez de pisarlo.
+   */
+  saldos: Array<{ sectorId: string; cantidad: number; esperado: number }>
+}
+
 export interface CreateMovimientoRequest {
   tipo: TipoMovimiento
   productId: string

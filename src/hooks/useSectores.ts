@@ -18,11 +18,14 @@ const invalidateSectorDependents = (queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: ['users'] })
 }
 
+/** Query de sectores. La comparten el hook y la precarga del menú. */
+export const sectoresQuery = {
+  queryKey: ['sectores'],
+  queryFn: getSectores
+}
+
 export const useSectores = () => {
-  return useQuery<Sector[]>({
-    queryKey: ['sectores'],
-    queryFn: getSectores
-  })
+  return useQuery<Sector[]>(sectoresQuery)
 }
 
 export const useSector = (id: string) => {
