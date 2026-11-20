@@ -15,6 +15,8 @@ const SalesPage = lazy(() => import('./pages/SalesPage').then(module => ({ defau
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(module => ({ default: module.ExpensesPage })))
 const CostsPage = lazy(() => import('./pages/CostsPage').then(module => ({ default: module.CostsPage })))
 const TiposCostoPage = lazy(() => import('./pages/TiposCostoPage').then(module => ({ default: module.TiposCostoPage })))
+const SectoresUsuariosPage = lazy(() => import('./pages/SectoresUsuariosPage').then(module => ({ default: module.SectoresUsuariosPage })))
+const StockPage = lazy(() => import('./pages/StockPage').then(module => ({ default: module.StockPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
 
 // Componente de loading para Suspense
@@ -84,6 +86,20 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>
 }
 
+/**
+ * Ruta solo para admin. Quien no lo es vuelve al inicio: la pantalla no le
+ * serviria, porque el backend le responde 403 a todo lo que hay en ella.
+ */
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth()
+
+  if (!user?.roles?.includes('admin')) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -122,6 +138,10 @@ function AppRoutes() {
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/costs" element={<CostsPage />} />
           <Route path="/tipos-costo" element={<TiposCostoPage />} />
+          <Route path="/stock" element={<StockPage />} />
+          <Route path="/sectores" element={<AdminRoute><SectoresUsuariosPage /></AdminRoute>} />
+          {/* Usuarios vive dentro de Sectores; la ruta vieja sigue andando */}
+          <Route path="/usuarios" element={<Navigate to="/sectores" replace />} />
         </Route>
 
         {/* Redirects */}

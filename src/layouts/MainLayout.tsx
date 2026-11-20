@@ -22,14 +22,21 @@ export const MainLayout: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path
 
+  const esAdmin = !!user?.roles?.includes('admin')
+
+  // Sectores (que incluye usuarios) es administracion: el backend responde
+  // 403 a cualquier otro rol, asi que ni se ofrece. Etiquetas cortas para
+  // que el menu entre en una sola linea.
   const navLinks = [
     { path: '/dashboard', label: 'Inicio' },
     { path: '/products', label: 'Productos' },
+    { path: '/stock', label: 'Stock' },
     { path: '/sales', label: 'Ventas' },
     { path: '/costs', label: 'Costos' },
-    { path: '/tipos-costo', label: 'Tipos de Costo' },
-    { path: '/expenses', label: 'Control de Gastos/Ingresos' }
-  ]
+    { path: '/tipos-costo', label: 'Tipos de costo' },
+    { path: '/expenses', label: 'Gastos e ingresos' },
+    { path: '/sectores', label: 'Sectores y usuarios', soloAdmin: true }
+  ].filter(link => !link.soloAdmin || esAdmin)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -38,19 +45,19 @@ export const MainLayout: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link to="/dashboard" className="text-xl font-bold text-primary-600 dark:text-primary-400">
+              <Link to="/dashboard" className="text-xl font-bold whitespace-nowrap text-primary-600 dark:text-primary-400">
                 Sorbo Sabores
               </Link>
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden xl:flex items-center gap-1">
               {navLinks.map(link => (
                 <Link
                   key={link.path}
                   to={link.path}
                   className={`
-                    px-3 py-2 rounded-md text-sm font-medium transition-colors
+                    px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors
                     ${isActive(link.path)
                       ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -80,14 +87,14 @@ export const MainLayout: React.FC = () => {
                 )}
               </button>
 
-              <div className="hidden md:flex items-center">
+              <div className="hidden xl:flex items-center">
                 <UserMenu />
               </div>
 
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="xl:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 aria-label="Menú"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,7 +110,7 @@ export const MainLayout: React.FC = () => {
 
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-1">
+            <div className="xl:hidden pb-4 space-y-1">
               {navLinks.map(link => (
                 <Link
                   key={link.path}
