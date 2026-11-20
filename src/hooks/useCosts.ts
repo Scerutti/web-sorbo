@@ -6,10 +6,13 @@ import type { CostItem, CreateCostRequest, UpdateCostRequest } from '@/types/cos
  * Hook para obtener todos los costos
  */
 export const useCosts = () => {
-  return useQuery<CostItem[]>({
-    queryKey: ['costs'],
-    queryFn: getCosts
-  })
+  return useQuery<CostItem[]>(costsQuery)
+}
+
+/** Query de costos. La comparten el hook y la precarga del menú. */
+export const costsQuery = {
+  queryKey: ['costs'],
+  queryFn: getCosts
 }
 
 /**

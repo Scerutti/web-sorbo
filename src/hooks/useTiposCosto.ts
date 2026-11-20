@@ -23,10 +23,13 @@ const invalidateTipoCostoDependents = (queryClient: ReturnType<typeof useQueryCl
  * Hook para obtener todos los tipos de costo
  */
 export const useTiposCosto = () => {
-  return useQuery<TipoCosto[]>({
-    queryKey: ['tipos-costo'],
-    queryFn: getTiposCosto
-  })
+  return useQuery<TipoCosto[]>(tiposCostoQuery)
+}
+
+/** Query de tipos de costo. La comparten el hook y la precarga del menú. */
+export const tiposCostoQuery = {
+  queryKey: ['tipos-costo'],
+  queryFn: getTiposCosto
 }
 
 /**
