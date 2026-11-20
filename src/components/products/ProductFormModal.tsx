@@ -9,8 +9,8 @@ import { calculateApplicableCosts, calculateProductSalePrice } from '../../share
 import { useAuth } from '../../providers/AuthProvider'
 import { useToast } from '../../providers/ToastProvider'
 import { useSectores } from '../../hooks/useSectores'
-import { useSaldos, useCreateMovimiento } from '../../hooks/useStock'
-import type { CreateMovimientoRequest, StockSector } from '@/types/stock'
+import { useSaldos, useFijarSaldos } from '../../hooks/useStock'
+import type { FijarSaldosRequest, StockSector } from '@/types/stock'
 import type { Sector } from '@/types/sector'
 
 // Valor por defecto estable para las consultas sin datos. Un `= []` en el
@@ -69,7 +69,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const productId = initialProduct?.id
   const { data: sectores = SIN_SECTORES } = useSectores()
   const { data: saldos = SIN_SALDOS } = useSaldos(productId ? { productId } : {})
-  const createMovimientoMutation = useCreateMovimiento()
+  const fijarSaldosMutation = useFijarSaldos()
   const [stockPorSector, setStockPorSector] = useState<Record<string, string>>({})
 
   // Saldo actual por sector de este producto. En un alta no hay ninguno.
@@ -126,75 +126,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   }
 
   /**
-   * Movimientos que llevan cada sector del saldo actual al elegido.
-   *
-   * Primero se emparejan los sectores que bajan con los que suben: esas
-   * unidades no aparecen ni desaparecen, cambian de lugar, así que van como
-   * transferencias y el libro muestra de dónde a dónde. Lo que sobra después
-   * es stock que entra (entrada) o que se corrige a la baja (ajuste al saldo
-   * final, que el backend convierte en diferencia).
+   * Saldo final de cada sector que cambió. El backend decide qué parte es
+   * transferencia entre sectores, qué parte entrada y qué parte ajuste, y lo
+   * registra todo en un solo request (PUT /stock/saldos).
    */
-  const movimientosDeStock = (id: string): CreateMovimientoRequest[] => {
-    const cambios = sectoresEditables
+  const saldosAFijar = (): FijarSaldosRequest['saldos'] =>
+    sectoresEditables
       .map(sector => ({
-        sector,
+        sectorId: sector.id,
         actual: saldoActual.get(sector.id) ?? 0,
-        nuevo: parseInt(stockPorSector[sector.id] ?? '', 10)
+        cantidad: parseInt(stockPorSector[sector.id] ?? '', 10)
       }))
-      .filter(c => !Number.isNaN(c.nuevo) && c.nuevo !== c.actual)
-
-    const bajan = cambios
-      .filter(c => c.nuevo < c.actual)
-      .map(c => ({ ...c, resto: c.actual - c.nuevo }))
-    const suben = cambios
-      .filter(c => c.nuevo > c.actual)
-      .map(c => ({ ...c, resto: c.nuevo - c.actual }))
-
-    const movimientos: CreateMovimientoRequest[] = []
-
-    for (const destino of suben) {
-      for (const origen of bajan) {
-        if (destino.resto === 0) break
-        const cantidad = Math.min(destino.resto, origen.resto)
-        if (cantidad === 0) continue
-        movimientos.push({
-          tipo: 'transferencia',
-          productId: id,
-          sectorOrigenId: origen.sector.id,
-          sectorDestinoId: destino.sector.id,
-          cantidad,
-          motivo: 'Reparto desde el producto'
-        })
-        destino.resto -= cantidad
-        origen.resto -= cantidad
-      }
-    }
-
-    suben
-      .filter(c => c.resto > 0)
-      .forEach(c =>
-        movimientos.push({
-          tipo: 'entrada',
-          productId: id,
-          sectorDestinoId: c.sector.id,
-          cantidad: c.resto,
-          motivo: 'Carga desde el producto'
-        })
-      )
-    bajan
-      .filter(c => c.resto > 0)
-      .forEach(c =>
-        movimientos.push({
-          tipo: 'ajuste',
-          productId: id,
-          sectorDestinoId: c.sector.id,
-          cantidad: c.nuevo,
-          motivo: 'Ajuste desde el producto'
-        })
-      )
-
-    return movimientos
-  }
+      .filter(c => !Number.isNaN(c.cantidad) && c.cantidad !== c.actual)
+      .map(({ sectorId, cantidad }) => ({ sectorId, cantidad }))
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -258,6 +202,45 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     return calculateProductSalePrice(base, costosAplicados, margin)
   }, [precioCosto, porcentajeGananciaMayorista, costosAplicados])
 
+  /** Campos del producto tal como se mandan al backend. */
+  const datosProducto = (): CreateProductRequest => ({
+    nombre: nombre.trim(),
+    descripcion: descripcion.trim() || undefined,
+    tipoId,
+    precioCosto: parseFloat(precioCosto),
+    porcentajeGanancia: parseFloat(porcentajeGanancia),
+    porcentajeGananciaMayorista: parseFloat(porcentajeGananciaMayorista) || 0
+  })
+
+  /**
+   * Si al editar sólo se tocó el stock, el producto no se vuelve a guardar:
+   * ese PUT era un request entero (con su recálculo de precios) que no
+   * cambiaba nada.
+   */
+  const productoCambio = (datos: CreateProductRequest): boolean => {
+    if (!initialProduct) return true
+    return (
+      datos.nombre !== initialProduct.nombre ||
+      (datos.descripcion ?? '') !== (initialProduct.descripcion ?? '') ||
+      datos.tipoId !== initialProduct.tipoId ||
+      datos.precioCosto !== initialProduct.precioCosto ||
+      datos.porcentajeGanancia !== initialProduct.porcentajeGanancia ||
+      datos.porcentajeGananciaMayorista !== (initialProduct.porcentajeGananciaMayorista || 0)
+    )
+  }
+
+  /** Guarda el reparto. Avisa el error y no lo propaga: el producto ya está. */
+  const guardarStock = async (productId: string, saldos: FijarSaldosRequest['saldos']) => {
+    try {
+      await fijarSaldosMutation.mutateAsync({ productId, saldos })
+      toast.success('Stock por sector actualizado')
+    } catch (error: any) {
+      toast.error(
+        `No se pudo actualizar el stock: ${error?.response?.data?.message || 'error desconocido'}`
+      )
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -265,37 +248,31 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return
     }
 
+    const datos = datosProducto()
+    const guardarProducto = productoCambio(datos)
+    // Mover stock es solo admin en el backend.
+    const saldos = esAdmin ? saldosAFijar() : []
+
+    if (!guardarProducto && saldos.length === 0) {
+      handleClose()
+      return
+    }
+
     setIsLoading(true)
     try {
-      const guardado = await onSubmit({
-        nombre: nombre.trim(),
-        descripcion: descripcion.trim() || undefined,
-        tipoId,
-        precioCosto: parseFloat(precioCosto),
-        porcentajeGanancia: parseFloat(porcentajeGanancia),
-        porcentajeGananciaMayorista: parseFloat(porcentajeGananciaMayorista) || 0
-      })
-      // El padre ya avisó el error: se queda abierto para corregir.
-      if (!guardado) return
-
-      if (esAdmin) {
-        // Uno por uno: si uno falla, los anteriores ya quedaron registrados
-        // y el resto se puede reintentar editando el producto otra vez.
-        const movimientos = movimientosDeStock(guardado.id)
-        let aplicados = 0
-        try {
-          for (const movimiento of movimientos) {
-            await createMovimientoMutation.mutateAsync(movimiento)
-            aplicados += 1
-          }
-          if (aplicados > 0) toast.success('Stock por sector actualizado')
-        } catch (error: any) {
-          toast.error(
-            `El producto se guardó, pero no se pudo actualizar el stock: ${
-              error?.response?.data?.message || 'error desconocido'
-            }`
-          )
-        }
+      if (initialProduct) {
+        // Editando, el id ya se conoce: producto y stock van a la vez.
+        const [guardado] = await Promise.all([
+          guardarProducto ? onSubmit(datos) : Promise.resolve(initialProduct),
+          saldos.length > 0 ? guardarStock(initialProduct.id, saldos) : Promise.resolve()
+        ])
+        // El padre ya avisó el error: se queda abierto para corregir.
+        if (!guardado) return
+      } else {
+        // En un alta el stock necesita el id del producto nuevo.
+        const guardado = await onSubmit(datos)
+        if (!guardado) return
+        if (saldos.length > 0) await guardarStock(guardado.id, saldos)
       }
 
       resetForm()

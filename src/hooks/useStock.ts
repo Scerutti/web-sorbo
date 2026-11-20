@@ -3,13 +3,15 @@ import {
   getSaldos,
   getResumen,
   getMovimientos,
-  createMovimiento
+  createMovimiento,
+  fijarSaldos
 } from '@/api/stock.api'
 import type {
   StockSector,
   StockResumen,
   MovimientoStock,
   CreateMovimientoRequest,
+  FijarSaldosRequest,
   StockQuery,
   MovimientosQuery
 } from '@/types/stock'
@@ -30,18 +32,23 @@ export const useSaldos = (query: StockQuery = {}) => {
   })
 }
 
+/** Queries de stock. Las comparten los hooks y la precarga del menú. */
+export const stockResumenQuery = (productId?: string) => ({
+  queryKey: ['stock', 'resumen', productId ?? null],
+  queryFn: () => getResumen(productId)
+})
+
+export const movimientosQuery = (query: MovimientosQuery = {}) => ({
+  queryKey: ['stock', 'movimientos', query],
+  queryFn: () => getMovimientos(query)
+})
+
 export const useStockResumen = (productId?: string) => {
-  return useQuery<StockResumen[]>({
-    queryKey: ['stock', 'resumen', productId ?? null],
-    queryFn: () => getResumen(productId)
-  })
+  return useQuery<StockResumen[]>(stockResumenQuery(productId))
 }
 
 export const useMovimientos = (query: MovimientosQuery = {}) => {
-  return useQuery<MovimientoStock[]>({
-    queryKey: ['stock', 'movimientos', query],
-    queryFn: () => getMovimientos(query)
-  })
+  return useQuery<MovimientoStock[]>(movimientosQuery(query))
 }
 
 export const useCreateMovimiento = () => {
@@ -49,6 +56,19 @@ export const useCreateMovimiento = () => {
 
   return useMutation({
     mutationFn: (movimiento: CreateMovimientoRequest) => createMovimiento(movimiento),
+    onSuccess: () => invalidateStockDependents(queryClient)
+  })
+}
+
+/**
+ * Fija el reparto de un producto entre sectores en un solo request. La
+ * invalidación es una sola, al final, en vez de una por sector movido.
+ */
+export const useFijarSaldos = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: FijarSaldosRequest) => fijarSaldos(request),
     onSuccess: () => invalidateStockDependents(queryClient)
   })
 }
