@@ -2,14 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getProducts, getProductById, createProduct, updateProduct, deleteProduct } from '@/api/products.api'
 import type { Product, CreateProductRequest, UpdateProductRequest } from '@/types/product'
 
+/** Query de productos. La comparten el hook y la precarga del menú. */
+export const productsQuery = {
+  queryKey: ['products'],
+  queryFn: getProducts
+}
+
 /**
  * Hook para obtener todos los productos
  */
 export const useProducts = () => {
-  return useQuery<Product[]>({
-    queryKey: ['products'],
-    queryFn: getProducts
-  })
+  return useQuery<Product[]>(productsQuery)
 }
 
 /**

@@ -25,11 +25,14 @@ import type { Ganancias, PuntoEquilibrio } from '@/types/expenses'
 
 /* ------------------------------- Gastos Base ------------------------------ */
 
+/** Query de gastos base. La comparten el hook y la precarga del menú. */
+export const gastosQuery = {
+  queryKey: ['gastos'],
+  queryFn: getGastos
+}
+
 export const useGastosBase = () => {
-  return useQuery<GastoBase[]>({
-    queryKey: ['gastos'],
-    queryFn: getGastos
-  })
+  return useQuery<GastoBase[]>(gastosQuery)
 }
 
 /**

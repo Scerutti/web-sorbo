@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../providers/AuthProvider'
 import { useTheme } from '../hooks/useTheme'
 import { Button } from '../components/ui/Button'
 import { UserMenu } from '../components/ui/UserMenu'
+import { PageSkeleton } from '../components/ui/PageSkeleton'
+import { prefetchSection, preloadAllPages } from '../lib/prefetch'
 
 /**
  * Layout principal con navbar y toolbar responsive
@@ -21,6 +23,18 @@ export const MainLayout: React.FC = () => {
   }
 
   const isActive = (path: string) => location.pathname === path
+
+  // El JS de las demás secciones se baja en segundo plano apenas hay
+  // sesión, así el primer ingreso a cada una no espera la descarga.
+  useEffect(() => preloadAllPages(), [])
+
+  // Apuntar a un link ya pide los datos de esa sección: para cuando llega
+  // el click, la página suele tenerlos en caché.
+  const prefetchProps = (path: string) => ({
+    onMouseEnter: () => prefetchSection(path),
+    onFocus: () => prefetchSection(path),
+    onTouchStart: () => prefetchSection(path)
+  })
 
   const esAdmin = !!user?.roles?.includes('admin')
 
@@ -56,6 +70,7 @@ export const MainLayout: React.FC = () => {
                 <Link
                   key={link.path}
                   to={link.path}
+                  {...prefetchProps(link.path)}
                   className={`
                     px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors
                     ${isActive(link.path)
@@ -115,6 +130,7 @@ export const MainLayout: React.FC = () => {
                 <Link
                   key={link.path}
                   to={link.path}
+                  {...prefetchProps(link.path)}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`
                     block px-3 py-2 rounded-md text-base font-medium
@@ -142,7 +158,15 @@ export const MainLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Outlet />
+        {/*
+          Suspense propio para las páginas: mientras baja el JS de una
+          sección se ve el esqueleto dentro del contenido y el menú queda
+          en pantalla. Sin esto subía al Suspense de App.tsx y toda la app
+          se reemplazaba por un "Cargando..." de pantalla completa.
+        */}
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

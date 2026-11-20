@@ -6,10 +6,13 @@ import type { Sale, CreateSaleRequest } from '@/types/sale'
  * Hook para obtener todas las ventas
  */
 export const useSales = () => {
-  return useQuery<Sale[]>({
-    queryKey: ['sales'],
-    queryFn: getSales
-  })
+  return useQuery<Sale[]>(salesQuery)
+}
+
+/** Query de ventas. La comparten el hook y la precarga del menú. */
+export const salesQuery = {
+  queryKey: ['sales'],
+  queryFn: getSales
 }
 
 /**

@@ -6,10 +6,13 @@ import type { User, CreateUserRequest, UpdateUserRequest } from '@/types/user'
  * Hook para obtener todos los usuarios
  */
 export const useUsers = () => {
-  return useQuery<User[]>({
-    queryKey: ['users'],
-    queryFn: getUsers
-  })
+  return useQuery<User[]>(usersQuery)
+}
+
+/** Query de usuarios. La comparten el hook y la precarga del menú. */
+export const usersQuery = {
+  queryKey: ['users'],
+  queryFn: getUsers
 }
 
 /**
