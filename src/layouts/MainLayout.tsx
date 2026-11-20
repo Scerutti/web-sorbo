@@ -25,10 +25,13 @@ export const MainLayout: React.FC = () => {
   const navLinks = [
     { path: '/dashboard', label: 'Inicio' },
     { path: '/products', label: 'Productos' },
+    { path: '/stock', label: 'Stock' },
     { path: '/sales', label: 'Ventas' },
     { path: '/costs', label: 'Costos' },
     { path: '/tipos-costo', label: 'Tipos de Costo' },
-    { path: '/expenses', label: 'Control de Gastos/Ingresos' }
+    { path: '/expenses', label: 'Control de Gastos/Ingresos' },
+    { path: '/sectores', label: 'Sectores' },
+    { path: '/usuarios', label: 'Usuarios' }
   ]
 
   return (

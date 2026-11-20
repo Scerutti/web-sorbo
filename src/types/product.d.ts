@@ -13,6 +13,11 @@ export interface Product {
   costos: number
   precioVenta: number
   precioVentaMayorista: number
+  /**
+   * Total del emprendimiento: la suma de los saldos por sector. Lo calcula el
+   * backend al leer; no es un campo que se escriba. Para cargar o mover
+   * unidades hay que registrar un movimiento en la pantalla de stock.
+   */
   stock: number
   soldCount: number
   createdAt?: string
@@ -26,7 +31,6 @@ export interface CreateProductRequest {
   precioCosto: number
   porcentajeGanancia: number
   porcentajeGananciaMayorista: number
-  stock: number
 }
 
 export interface UpdateProductRequest {
@@ -36,5 +40,4 @@ export interface UpdateProductRequest {
   precioCosto?: number
   porcentajeGanancia?: number
   porcentajeGananciaMayorista?: number
-  stock?: number
 }

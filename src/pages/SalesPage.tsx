@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales'
 import { useProducts } from '../hooks/useProducts'
+import { useSaldos } from '../hooks/useStock'
+import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
@@ -53,6 +55,29 @@ export const SalesPage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm()
 
   // Calcular fechas por defecto una sola vez al montar el componente
+  const { user } = useAuth()
+
+  // La venta descuenta del sector del usuario, asi que el limite de cada
+  // linea es ese saldo y no el total del emprendimiento. El backend ya
+  // acota a un vendedor a su sector; mandarlo explicito acota tambien al
+  // admin, que si no veria todos.
+  const { data: saldos = [] } = useSaldos(
+    user?.sectorId ? { sectorId: user.sectorId } : {}
+  )
+
+  const stockPorProducto = useMemo(() => {
+    const acc = new Map<string, number>()
+    saldos.forEach(saldo => {
+      acc.set(saldo.productId, (acc.get(saldo.productId) ?? 0) + saldo.cantidad)
+    })
+    return acc
+  }, [saldos])
+
+  const stockDisponible = useCallback(
+    (productId: string) => stockPorProducto.get(productId) ?? 0,
+    [stockPorProducto]
+  )
+
   const defaultDates = useMemo(() => getDefaultDates(), [])
 
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
@@ -305,6 +330,7 @@ export const SalesPage: React.FC = () => {
           }
         }}
         products={products}
+        stockDisponible={stockDisponible}
         esMayorista={isMayoristaModal}
         initialSale={editingSale || undefined}
         draft={currentDraft}
