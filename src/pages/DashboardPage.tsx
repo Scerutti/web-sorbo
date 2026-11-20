@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useProducts, useCreateProduct } from '../hooks/useProducts'
 import { useCreateSale } from '../hooks/useSales'
+import { useSaldos } from '../hooks/useStock'
 import { useCosts } from '../hooks/useCosts'
 import { useTiposCosto } from '../hooks/useTiposCosto'
 import { useGanancias } from '../hooks/useExpenses'
@@ -21,6 +22,25 @@ import { ProductFormModal } from '../components/products/ProductFormModal'
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth()
   const { data: products = [], isLoading: isLoadingProducts } = useProducts()
+
+  // Igual que en Ventas: el limite de cada linea es el saldo del sector
+  // desde el que se vende, no el total del emprendimiento.
+  const { data: saldos = [] } = useSaldos(
+    user?.sectorId ? { sectorId: user.sectorId } : {}
+  )
+
+  const stockPorProducto = useMemo(() => {
+    const acc = new Map<string, number>()
+    saldos.forEach(saldo => {
+      acc.set(saldo.productId, (acc.get(saldo.productId) ?? 0) + saldo.cantidad)
+    })
+    return acc
+  }, [saldos])
+
+  const stockDisponible = useCallback(
+    (productId: string) => stockPorProducto.get(productId) ?? 0,
+    [stockPorProducto]
+  )
   const { data: costItems = [], isLoading: isLoadingCosts } = useCosts()
   const { data: tiposCosto = [] } = useTiposCosto()
   const { data: ganancias, isLoading: isLoadingGanancias } = useGanancias()
@@ -68,7 +88,14 @@ export const DashboardPage: React.FC = () => {
 
       {/* Quick Actions */}
       <QuickActions
-        onNewSale={() => setIsSaleModalOpen(true)}
+        onNewSale={() => {
+          // Sin sector el backend rechaza la venta: mejor avisar antes.
+          if (!user?.sectorId) {
+            toast.error('No tenés un sector asignado. Pedile a un admin que te asigne uno.')
+            return
+          }
+          setIsSaleModalOpen(true)
+        }}
         onNewProduct={() => setIsProductModalOpen(true)}
       />
 
@@ -96,6 +123,7 @@ export const DashboardPage: React.FC = () => {
           }
         }}
         products={products}
+        stockDisponible={stockDisponible}
       />
 
       <ProductFormModal

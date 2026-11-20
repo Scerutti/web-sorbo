@@ -6,6 +6,8 @@ export * from './users.api'
 export * from './products.api'
 export * from './costs.api'
 export * from './tiposCosto.api'
+export * from './sectores.api'
+export * from './stock.api'
 export * from './sales.api'
 export { axiosPrivate, axiosPublic, getAccessToken, setAccessToken, removeAccessToken, logout } from './http'
 

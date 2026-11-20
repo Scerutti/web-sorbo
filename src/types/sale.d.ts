@@ -21,6 +21,8 @@ export interface Sale {
   total: number
   esMayorista: boolean
   vendedorId?: string
+  /** Sector del que salio el stock. Ausente en ventas anteriores al cambio. */
+  sectorId?: string
   createdAt?: string
   updatedAt?: string
 }

@@ -35,6 +35,8 @@ export const useCreateSale = () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       // Invalidar productos porque el stock cambia
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      // Y los saldos por sector, que son el limite de la proxima venta
+      queryClient.invalidateQueries({ queryKey: ['stock'] })
     }
   })
 }
@@ -53,6 +55,8 @@ export const useUpdateSale = () => {
       queryClient.invalidateQueries({ queryKey: ['sales', data.id] })
       // Invalidar productos porque el stock puede cambiar
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      // Y los saldos por sector, que son el limite de la proxima venta
+      queryClient.invalidateQueries({ queryKey: ['stock'] })
     }
   })
 }
@@ -69,6 +73,8 @@ export const useDeleteSale = () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       // Invalidar productos porque el stock cambia al eliminar la venta
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      // Y los saldos por sector, que son el limite de la proxima venta
+      queryClient.invalidateQueries({ queryKey: ['stock'] })
     }
   })
 }

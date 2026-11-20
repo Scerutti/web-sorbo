@@ -1,7 +1,12 @@
+import type { UserRole } from './user'
+
 export interface User {
   id: string
   email: string
   name: string
+  roles?: UserRole[]
+  /** Sector en el que opera: sus ventas descuentan de ese stock. */
+  sectorId?: string
 }
 
 export interface AuthResponse {

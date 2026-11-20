@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales'
 import { useProducts } from '../hooks/useProducts'
+import { useSaldos } from '../hooks/useStock'
+import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
 import { useConfirm } from '../hooks/useConfirm'
 import type { Sale } from '@/types'
@@ -52,6 +54,8 @@ export const SalesPage: React.FC = () => {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
+  const { user } = useAuth()
+
   // Calcular fechas por defecto una sola vez al montar el componente
   const defaultDates = useMemo(() => getDefaultDates(), [])
 
@@ -61,6 +65,33 @@ export const SalesPage: React.FC = () => {
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [currentDraft, setCurrentDraft] = useState<SaleDraft | undefined>(undefined)
   const [drafts, setDrafts] = useState<SaleDraft[]>([])
+
+  // El limite de cada linea es el saldo del sector del que sale el stock, no
+  // el total del emprendimiento. En una venta nueva es el sector del usuario;
+  // al editar es el de la venta, porque el backend mueve el stock contra ese
+  // sector aunque quien edite (un admin) sea de otro. Mandarlo explicito
+  // acota tambien al admin, que si no veria todos los sectores sumados.
+  // Sin sector, el backend rechaza la venta: no hay de donde descontar.
+  const puedeVender = !!user?.sectorId
+
+  const sectorDeVenta = editingSale?.sectorId ?? user?.sectorId
+  const { data: saldos = [] } = useSaldos(
+    sectorDeVenta ? { sectorId: sectorDeVenta } : {}
+  )
+
+  const stockPorProducto = useMemo(() => {
+    const acc = new Map<string, number>()
+    saldos.forEach(saldo => {
+      acc.set(saldo.productId, (acc.get(saldo.productId) ?? 0) + saldo.cantidad)
+    })
+    return acc
+  }, [saldos])
+
+  const stockDisponible = useCallback(
+    (productId: string) => stockPorProducto.get(productId) ?? 0,
+    [stockPorProducto]
+  )
+
   const [dateFrom, setDateFrom] = useState(() => {
     const dates = getDefaultDates()
     return dates.dateFrom
@@ -152,13 +183,13 @@ export const SalesPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="primary" onClick={() => {
+          <Button variant="primary" disabled={!puedeVender} onClick={() => {
             setIsMayoristaModal(false)
             setIsSaleModalOpen(true)
           }}>
             Agregar Venta
           </Button>
-          <Button variant="secondary" onClick={() => {
+          <Button variant="secondary" disabled={!puedeVender} onClick={() => {
             setIsMayoristaModal(true)
             setIsSaleModalOpen(true)
           }}>
@@ -166,6 +197,13 @@ export const SalesPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {!puedeVender && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200">
+          No tenés un sector asignado, así que no podés registrar ventas: no hay
+          de qué stock descontarlas. Pedile a un admin que te asigne uno en Usuarios.
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -305,6 +343,7 @@ export const SalesPage: React.FC = () => {
           }
         }}
         products={products}
+        stockDisponible={stockDisponible}
         esMayorista={isMayoristaModal}
         initialSale={editingSale || undefined}
         draft={currentDraft}

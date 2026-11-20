@@ -14,6 +14,12 @@ interface CreateSaleModalProps {
   onClose: () => void
   onSubmit: (sale: Omit<Sale, 'id'>) => Promise<void>
   products: Product[]
+  /**
+   * Unidades disponibles en el sector desde el que se vende. El `stock`
+   * del producto es el total del emprendimiento y puede estar repartido
+   * en otros sectores, asi que no sirve como limite.
+   */
+  stockDisponible: (productId: string) => number
   esMayorista?: boolean
   initialSale?: Sale // Para modo edición
   draft?: SaleDraft // Borrador a cargar
@@ -43,6 +49,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   onClose,
   onSubmit,
   products,
+  stockDisponible,
   esMayorista: initialEsMayorista = false,
   initialSale,
   draft,
@@ -109,11 +116,11 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
     }
   }, [isOpen, initialEsMayorista, initialSale, draft, products])
 
-  const availableProducts = products.filter(p => p.stock > 0)
+  const availableProducts = products.filter(p => stockDisponible(p.id) > 0)
 
   const productOptions = availableProducts.map(product => ({
     value: product.id,
-    label: `${product.nombre} (Stock: ${product.stock})`
+    label: `${product.nombre} (Stock: ${stockDisponible(product.id)})`
   }))
 
   // El backend ya devuelve costos, precioVenta y precioVentaMayorista con los
@@ -203,14 +210,15 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
         }
 
         // Calcular stock disponible: stock actual + cantidad a restaurar (si es positiva)
-        const stockAvailable = product.stock + (difference < 0 ? 0 : originalQty)
+        const stockAvailable =
+          stockDisponible(product.id) + (difference < 0 ? 0 : originalQty)
         
         // Si la diferencia es positiva (aumentamos cantidad), validar contra stock disponible
         if (difference > 0 && difference > stockAvailable) {
           // Encontrar todos los índices de items con este producto para mostrar el error
           items.forEach((item, index) => {
             if (item.productId === productId && !result[index]) {
-              result[index] = `Cantidad excede el stock disponible. Stock actual: ${product.stock}, cantidad original: ${originalQty}, diferencia requerida: ${difference}`
+              result[index] = `Cantidad excede el stock disponible. Stock actual: ${stockDisponible(product.id)}, cantidad original: ${originalQty}, diferencia requerida: ${difference}`
             }
           })
         }
@@ -221,8 +229,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       items.forEach((item, index) => {
         if (item.productId && item.product && !originalQuantities.has(item.productId)) {
           // Es un producto nuevo, validar contra stock actual
-          if (item.quantity > item.product.stock) {
-            result[index] = `Cantidad excede el stock disponible (${item.product.stock})`
+          if (item.quantity > stockDisponible(item.product.id)) {
+            result[index] = `Cantidad excede el stock disponible (${stockDisponible(item.product.id)})`
           }
         }
       })
@@ -242,8 +250,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       items.forEach((item, index) => {
         if (item.product) {
           const totalQuantity = quantityByProduct.get(item.product.id) || 0
-          if (totalQuantity > item.product.stock) {
-            result[index] = `Cantidad total excede el stock disponible (${item.product.stock})`
+          if (totalQuantity > stockDisponible(item.product.id)) {
+            result[index] = `Cantidad total excede el stock disponible (${stockDisponible(item.product.id)})`
           }
         }
       })
@@ -264,14 +272,14 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       
       if (originalItem) {
         // Producto existente: stock disponible = stock actual + cantidad original (que se restaurará)
-        return item.product.stock + originalItem.cantidad
+        return stockDisponible(item.product.id) + originalItem.cantidad
       } else {
         // Producto nuevo: usar stock actual
-        return item.product.stock
+        return stockDisponible(item.product.id)
       }
     } else {
       // Modo creación: usar stock actual
-      return item.product.stock
+      return stockDisponible(item.product.id)
     }
   }
 
@@ -574,7 +582,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                       )}
                     </p>
                     <p>Costos aplicados: {formatCurrency(productFinancials.costos)}</p>
-                    <p>Stock disponible: {item.product.stock}</p>
+                    <p>Stock disponible: {stockDisponible(item.product.id)}</p>
                     {esMayorista && (!item.product.porcentajeGananciaMayorista || item.product.porcentajeGananciaMayorista === 0) && (
                       <p className="text-yellow-600 dark:text-yellow-400">⚠️ Sin descuento mayorista configurado</p>
                     )}

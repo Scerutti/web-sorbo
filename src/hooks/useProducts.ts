@@ -63,6 +63,8 @@ export const useDeleteProduct = () => {
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      // El backend borra tambien sus saldos por sector
+      queryClient.invalidateQueries({ queryKey: ['stock'] })
     }
   })
 }

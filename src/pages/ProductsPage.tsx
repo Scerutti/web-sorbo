@@ -138,9 +138,10 @@ export const ProductsPage: React.FC = () => {
     try {
       await deleteProductMutation.mutateAsync(productId)
       toast.success('Producto eliminado correctamente')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error eliminando producto:', error)
-      toast.error('Error al eliminar el producto')
+      // Con stock el backend responde 409 y explica que hay que dejarlo en 0.
+      toast.error(error?.response?.data?.message || 'Error al eliminar el producto')
     }
   }
 

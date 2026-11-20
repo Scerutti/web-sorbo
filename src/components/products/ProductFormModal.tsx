@@ -37,7 +37,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [precioCosto, setPrecioCosto] = useState('')
   const [porcentajeGanancia, setPorcentajeGanancia] = useState('50')
   const [porcentajeGananciaMayorista, setPorcentajeGananciaMayorista] = useState('0')
-  const [stock, setStock] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
@@ -49,7 +48,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setPrecioCosto(initialProduct.precioCosto.toString())
       setPorcentajeGanancia(initialProduct.porcentajeGanancia.toString())
       setPorcentajeGananciaMayorista((initialProduct.porcentajeGananciaMayorista || 0).toString())
-      setStock(initialProduct.stock.toString())
     } else {
       resetForm()
     }
@@ -62,7 +60,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setPrecioCosto('')
     setPorcentajeGanancia('50')
     setPorcentajeGananciaMayorista('0')
-    setStock('')
     setErrors({})
   }
 
@@ -90,11 +87,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     const marginMayorista = parseFloat(porcentajeGananciaMayorista)
     if (isNaN(marginMayorista) || marginMayorista < 0) {
       newErrors.porcentajeGananciaMayorista = 'El porcentaje de ganancia mayorista debe ser mayor o igual a 0'
-    }
-
-    const stockNum = parseInt(stock, 10)
-    if (isNaN(stockNum) || stockNum < 0) {
-      newErrors.stock = 'El stock debe ser mayor o igual a 0'
     }
 
     setErrors(newErrors)
@@ -136,8 +128,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         tipoId,
         precioCosto: parseFloat(precioCosto),
         porcentajeGanancia: parseFloat(porcentajeGanancia),
-        porcentajeGananciaMayorista: parseFloat(porcentajeGananciaMayorista) || 0,
-        stock: parseInt(stock, 10)
+        porcentajeGananciaMayorista: parseFloat(porcentajeGananciaMayorista) || 0
       })
       resetForm()
       onClose()
@@ -244,16 +235,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           helperText={parseFloat(porcentajeGananciaMayorista) === 0 ? "No aplica descuento mayorista" : undefined}
         />
 
-        <Input
-          type="number"
-          label="Stock"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          error={errors.stock}
-          min="0"
-          required
-          aria-label="Stock disponible"
-        />
+        {/* El stock dejo de ser un campo del producto: es la suma de los
+            saldos por sector. Se carga y se mueve desde la pantalla de
+            Stock, que es donde se dice a que sector van las unidades. */}
 
         {tipoId && (
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-4 space-y-2 text-sm">
