@@ -69,6 +69,11 @@ export const useFijarSaldos = () => {
 
   return useMutation({
     mutationFn: (request: FijarSaldosRequest) => fijarSaldos(request),
-    onSuccess: () => invalidateStockDependents(queryClient)
+    // Sin reintento: el default del queryClient (retry: 1) repetía un 409 o
+    // un 400 que va a fallar igual, y el aviso llegaba un segundo tarde.
+    retry: false,
+    // También ante un error: un 409 significa que los saldos en caché están
+    // viejos, y la próxima vez que se abra el producto tienen que ser los reales.
+    onSettled: () => invalidateStockDependents(queryClient)
   })
 }

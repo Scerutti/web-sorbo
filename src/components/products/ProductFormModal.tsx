@@ -68,7 +68,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const esAdmin = !!user?.roles?.includes('admin')
   const productId = initialProduct?.id
   const { data: sectores = SIN_SECTORES } = useSectores()
-  const { data: saldos = SIN_SALDOS } = useSaldos(productId ? { productId } : {})
+  const { data: saldos = SIN_SALDOS, refetch: refetchSaldos } = useSaldos(
+    productId ? { productId } : {}
+  )
+
+  // Al abrir se releen los saldos: el caché puede tener varios minutos y el
+  // guardado manda lo que se ve acá como saldo esperado. Si los datos no
+  // cambiaron, React Query conserva la referencia y el formulario no se toca.
+  useEffect(() => {
+    if (isOpen && productId) refetchSaldos()
+  }, [isOpen, productId, refetchSaldos])
   const fijarSaldosMutation = useFijarSaldos()
   const [stockPorSector, setStockPorSector] = useState<Record<string, string>>({})
 
@@ -138,7 +147,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         cantidad: parseInt(stockPorSector[sector.id] ?? '', 10)
       }))
       .filter(c => !Number.isNaN(c.cantidad) && c.cantidad !== c.actual)
-      .map(({ sectorId, cantidad }) => ({ sectorId, cantidad }))
+      .map(({ sectorId, cantidad, actual }) => ({ sectorId, cantidad, esperado: actual }))
 
   const validate = () => {
     const newErrors: Record<string, string> = {}

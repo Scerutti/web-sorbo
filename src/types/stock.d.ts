@@ -55,7 +55,12 @@ export interface MovimientoStock {
  */
 export interface FijarSaldosRequest {
   productId: string
-  saldos: Array<{ sectorId: string; cantidad: number }>
+  /**
+   * `cantidad` es el saldo final. `esperado` es el saldo que el usuario tenía
+   * en pantalla: si en la base ya es otro (entró una venta mientras editaba),
+   * el backend responde 409 en vez de pisarlo.
+   */
+  saldos: Array<{ sectorId: string; cantidad: number; esperado: number }>
 }
 
 export interface CreateMovimientoRequest {
