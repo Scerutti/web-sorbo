@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import type { CreateMovimientoRequest } from '@/types/stock'
-import { TIPO_MOVIMIENTO_LABEL } from '@/types/stock'
+import { TIPO_MOVIMIENTO_LABEL } from '../shared/constants'
 import {
   useStockResumen,
   useSaldos,

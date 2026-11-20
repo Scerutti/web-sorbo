@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import type { User, CreateUserRequest } from '@/types/user'
-import { USER_ROLE_LABEL } from '@/types/user'
+import { USER_ROLE_LABEL } from '../shared/constants'
 import {
   useUsers,
   useCreateUser,

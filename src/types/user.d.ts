@@ -1,12 +1,5 @@
 export type UserRole = 'admin' | 'seller'
 
-export const USER_ROLES: UserRole[] = ['admin', 'seller']
-
-export const USER_ROLE_LABEL: Record<UserRole, string> = {
-  admin: 'Administrador',
-  seller: 'Vendedor'
-}
-
 export interface User {
   id: string
   email: string

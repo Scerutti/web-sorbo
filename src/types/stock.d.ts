@@ -1,19 +1,5 @@
 export type TipoMovimiento = 'entrada' | 'salida' | 'transferencia' | 'ajuste'
 
-export const TIPOS_MOVIMIENTO: TipoMovimiento[] = [
-  'entrada',
-  'salida',
-  'transferencia',
-  'ajuste'
-]
-
-export const TIPO_MOVIMIENTO_LABEL: Record<TipoMovimiento, string> = {
-  entrada: 'Entrada',
-  salida: 'Salida',
-  transferencia: 'Transferencia',
-  ajuste: 'Ajuste'
-}
-
 /** Saldo de un producto en un sector. */
 export interface StockSector {
   id: string

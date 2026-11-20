@@ -60,11 +60,18 @@ export const SectoresPage: React.FC = () => {
     const sector = sectores.find(s => s.id === id)
     const conSaldo = resumenPorSector.get(id)
 
+    // Con saldo el backend responde 409: no tiene sentido ofrecer "Eliminar"
+    // para que falle. Se avisa y se corta acá.
+    if (conSaldo) {
+      toast.error(
+        `"${sector?.nombre}" tiene stock de ${conSaldo.productos} producto(s). Transferilo a otro sector antes de eliminarlo.`
+      )
+      return
+    }
+
     const confirmed = await confirm({
       title: 'Eliminar sector',
-      message: conSaldo
-        ? `"${sector?.nombre}" tiene stock de ${conSaldo.productos} producto(s). No vas a poder eliminarlo hasta transferirlo a otro sector.`
-        : `¿Estás seguro de eliminar "${sector?.nombre}"? Esta acción no se puede deshacer.`,
+      message: `¿Estás seguro de eliminar "${sector?.nombre}"? Esta acción no se puede deshacer.`,
       variant: 'danger',
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { User, CreateUserRequest, UserRole } from '@/types/user'
-import { USER_ROLES, USER_ROLE_LABEL } from '@/types/user'
+import { USER_ROLES, USER_ROLE_LABEL } from '../../shared/constants'
 import type { Sector } from '@/types/sector'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'

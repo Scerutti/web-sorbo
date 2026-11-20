@@ -54,15 +54,26 @@ export const SalesPage: React.FC = () => {
   const toast = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
-  // Calcular fechas por defecto una sola vez al montar el componente
   const { user } = useAuth()
 
-  // La venta descuenta del sector del usuario, asi que el limite de cada
-  // linea es ese saldo y no el total del emprendimiento. El backend ya
-  // acota a un vendedor a su sector; mandarlo explicito acota tambien al
-  // admin, que si no veria todos.
+  // Calcular fechas por defecto una sola vez al montar el componente
+  const defaultDates = useMemo(() => getDefaultDates(), [])
+
+  const [filteredSales, setFilteredSales] = useState<Sale[]>([])
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
+  const [isMayoristaModal, setIsMayoristaModal] = useState(false)
+  const [editingSale, setEditingSale] = useState<Sale | null>(null)
+  const [currentDraft, setCurrentDraft] = useState<SaleDraft | undefined>(undefined)
+  const [drafts, setDrafts] = useState<SaleDraft[]>([])
+
+  // El limite de cada linea es el saldo del sector del que sale el stock, no
+  // el total del emprendimiento. En una venta nueva es el sector del usuario;
+  // al editar es el de la venta, porque el backend mueve el stock contra ese
+  // sector aunque quien edite (un admin) sea de otro. Mandarlo explicito
+  // acota tambien al admin, que si no veria todos los sectores sumados.
+  const sectorDeVenta = editingSale?.sectorId ?? user?.sectorId
   const { data: saldos = [] } = useSaldos(
-    user?.sectorId ? { sectorId: user.sectorId } : {}
+    sectorDeVenta ? { sectorId: sectorDeVenta } : {}
   )
 
   const stockPorProducto = useMemo(() => {
@@ -78,14 +89,6 @@ export const SalesPage: React.FC = () => {
     [stockPorProducto]
   )
 
-  const defaultDates = useMemo(() => getDefaultDates(), [])
-
-  const [filteredSales, setFilteredSales] = useState<Sale[]>([])
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
-  const [isMayoristaModal, setIsMayoristaModal] = useState(false)
-  const [editingSale, setEditingSale] = useState<Sale | null>(null)
-  const [currentDraft, setCurrentDraft] = useState<SaleDraft | undefined>(undefined)
-  const [drafts, setDrafts] = useState<SaleDraft[]>([])
   const [dateFrom, setDateFrom] = useState(() => {
     const dates = getDefaultDates()
     return dates.dateFrom
