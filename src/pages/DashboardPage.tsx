@@ -88,7 +88,14 @@ export const DashboardPage: React.FC = () => {
 
       {/* Quick Actions */}
       <QuickActions
-        onNewSale={() => setIsSaleModalOpen(true)}
+        onNewSale={() => {
+          // Sin sector el backend rechaza la venta: mejor avisar antes.
+          if (!user?.sectorId) {
+            toast.error('No tenés un sector asignado. Pedile a un admin que te asigne uno.')
+            return
+          }
+          setIsSaleModalOpen(true)
+        }}
         onNewProduct={() => setIsProductModalOpen(true)}
       />
 

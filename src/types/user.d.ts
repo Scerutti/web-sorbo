@@ -29,5 +29,6 @@ export interface UpdateUserRequest {
   password?: string
   displayName?: string
   roles?: UserRole[]
-  sectorId?: string
+  /** null quita el sector asignado; ausente lo deja como está. */
+  sectorId?: string | null
 }

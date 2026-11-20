@@ -72,13 +72,21 @@ export const MovimientoFormModal: React.FC<MovimientoFormModalProps> = ({
     () => sectores.map(s => ({ value: s.id, label: s.nombre })),
     [sectores]
   )
+  // El ajuste es un conteo: tambien vale para un sector inactivo, siempre
+  // que sea hacia abajo (eso se valida mas abajo).
   const opcionesDestino = useMemo(
     () =>
       sectores
-        .filter(s => s.activo)
-        .map(s => ({ value: s.id, label: s.nombre })),
-    [sectores]
+        .filter(s => s.activo || tipo === 'ajuste')
+        .map(s => ({
+          value: s.id,
+          label: s.activo ? s.nombre : `${s.nombre} (inactivo)`
+        })),
+    [sectores, tipo]
   )
+
+  const destinoInactivo =
+    !!sectorDestinoId && sectores.find(s => s.id === sectorDestinoId)?.activo === false
 
   const saldoOrigen =
     productId && sectorOrigenId ? saldoDe(productId, sectorOrigenId) : null
@@ -114,6 +122,13 @@ export const MovimientoFormModal: React.FC<MovimientoFormModalProps> = ({
           : 'La cantidad debe ser al menos 1'
     } else if (tipo === 'ajuste' && saldoDestino !== null && numero === saldoDestino) {
       newErrors.cantidad = `El saldo ya es ${numero}. No hay nada que ajustar.`
+    } else if (
+      tipo === 'ajuste' &&
+      destinoInactivo &&
+      saldoDestino !== null &&
+      numero > saldoDestino
+    ) {
+      newErrors.cantidad = 'Un sector inactivo no puede recibir stock: sólo se puede ajustar hacia abajo'
     } else if (usaOrigen && saldoOrigen !== null && numero > saldoOrigen) {
       newErrors.cantidad = `El sector de origen tiene ${saldoOrigen} unidad(es)`
     }
@@ -147,7 +162,11 @@ export const MovimientoFormModal: React.FC<MovimientoFormModalProps> = ({
         <Select
           label="Tipo"
           value={tipo}
-          onChange={event => setTipo(event.target.value as TipoMovimiento)}
+          onChange={event => {
+            const nuevo = event.target.value as TipoMovimiento
+            setTipo(nuevo)
+            if (nuevo !== 'ajuste' && destinoInactivo) setSectorDestinoId('')
+          }}
           options={(Object.keys(TIPO_MOVIMIENTO_LABEL) as TipoMovimiento[]).map(t => ({
             value: t,
             label: TIPO_MOVIMIENTO_LABEL[t]

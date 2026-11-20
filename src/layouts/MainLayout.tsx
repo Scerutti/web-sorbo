@@ -22,6 +22,10 @@ export const MainLayout: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path
 
+  const esAdmin = !!user?.roles?.includes('admin')
+
+  // Sectores y Usuarios son administracion: el backend responde 403 a
+  // cualquier otro rol, asi que ni se ofrecen.
   const navLinks = [
     { path: '/dashboard', label: 'Inicio' },
     { path: '/products', label: 'Productos' },
@@ -30,9 +34,9 @@ export const MainLayout: React.FC = () => {
     { path: '/costs', label: 'Costos' },
     { path: '/tipos-costo', label: 'Tipos de Costo' },
     { path: '/expenses', label: 'Control de Gastos/Ingresos' },
-    { path: '/sectores', label: 'Sectores' },
-    { path: '/usuarios', label: 'Usuarios' }
-  ]
+    { path: '/sectores', label: 'Sectores', soloAdmin: true },
+    { path: '/usuarios', label: 'Usuarios', soloAdmin: true }
+  ].filter(link => !link.soloAdmin || esAdmin)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

@@ -71,6 +71,9 @@ export const SalesPage: React.FC = () => {
   // al editar es el de la venta, porque el backend mueve el stock contra ese
   // sector aunque quien edite (un admin) sea de otro. Mandarlo explicito
   // acota tambien al admin, que si no veria todos los sectores sumados.
+  // Sin sector, el backend rechaza la venta: no hay de donde descontar.
+  const puedeVender = !!user?.sectorId
+
   const sectorDeVenta = editingSale?.sectorId ?? user?.sectorId
   const { data: saldos = [] } = useSaldos(
     sectorDeVenta ? { sectorId: sectorDeVenta } : {}
@@ -180,13 +183,13 @@ export const SalesPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="primary" onClick={() => {
+          <Button variant="primary" disabled={!puedeVender} onClick={() => {
             setIsMayoristaModal(false)
             setIsSaleModalOpen(true)
           }}>
             Agregar Venta
           </Button>
-          <Button variant="secondary" onClick={() => {
+          <Button variant="secondary" disabled={!puedeVender} onClick={() => {
             setIsMayoristaModal(true)
             setIsSaleModalOpen(true)
           }}>
@@ -194,6 +197,13 @@ export const SalesPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {!puedeVender && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200">
+          No tenés un sector asignado, así que no podés registrar ventas: no hay
+          de qué stock descontarlas. Pedile a un admin que te asigne uno en Usuarios.
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

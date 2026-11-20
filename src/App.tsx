@@ -87,6 +87,20 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>
 }
 
+/**
+ * Ruta solo para admin. Quien no lo es vuelve al inicio: la pantalla no le
+ * serviria, porque el backend le responde 403 a todo lo que hay en ella.
+ */
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth()
+
+  if (!user?.roles?.includes('admin')) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -126,8 +140,8 @@ function AppRoutes() {
           <Route path="/costs" element={<CostsPage />} />
           <Route path="/tipos-costo" element={<TiposCostoPage />} />
           <Route path="/stock" element={<StockPage />} />
-          <Route path="/sectores" element={<SectoresPage />} />
-          <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route path="/sectores" element={<AdminRoute><SectoresPage /></AdminRoute>} />
+          <Route path="/usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         </Route>
 
         {/* Redirects */}

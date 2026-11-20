@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import type { User, CreateUserRequest, UserRole } from '@/types/user'
+import type { User, CreateUserRequest, UpdateUserRequest, UserRole } from '@/types/user'
 import { USER_ROLES, USER_ROLE_LABEL } from '../../shared/constants'
 import type { Sector } from '@/types/sector'
 import { Modal } from '../ui/Modal'
@@ -17,7 +17,8 @@ import { Button } from '../ui/Button'
 interface UsuarioFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (usuario: CreateUserRequest) => Promise<void>
+  /** Alta: CreateUserRequest. Edición: UpdateUserRequest (sectorId null = quitarlo). */
+  onSubmit: (usuario: CreateUserRequest | UpdateUserRequest) => Promise<void>
   initialUsuario?: User | null
   sectores: Sector[]
 }
@@ -101,13 +102,29 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({
 
     setIsLoading(true)
     try {
-      await onSubmit({
+      const base = {
         email: email.trim().toLowerCase(),
-        ...(password ? { password } : ({} as { password: string })),
         ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
-        roles,
-        ...(sectorId ? { sectorId } : {})
-      } as CreateUserRequest)
+        roles
+      }
+
+      if (isEdicion) {
+        // En edición, "Sin sector asignado" tiene que quitarlo: si no se
+        // manda nada, el backend conserva el anterior.
+        const cambios: UpdateUserRequest = {
+          ...base,
+          ...(password ? { password } : {}),
+          sectorId: sectorId || null
+        }
+        await onSubmit(cambios)
+      } else {
+        const alta: CreateUserRequest = {
+          ...base,
+          password,
+          ...(sectorId ? { sectorId } : {})
+        }
+        await onSubmit(alta)
+      }
     } finally {
       setIsLoading(false)
     }

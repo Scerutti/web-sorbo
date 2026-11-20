@@ -10,6 +10,7 @@ import {
 import { useSectores } from '../hooks/useSectores'
 import { useProducts } from '../hooks/useProducts'
 import { useToast } from '../providers/ToastProvider'
+import { useAuth } from '../providers/AuthProvider'
 import { MovimientoFormModal } from '../components/stock/MovimientoFormModal'
 import { Table, TableHeader, TableHead, TableRow } from '../components/ui/Table'
 import { Button } from '../components/ui/Button'
@@ -42,6 +43,9 @@ export const StockPage: React.FC = () => {
   const { data: movimientos = [], isLoading: isLoadingMovimientos } = useMovimientos()
   const createMovimientoMutation = useCreateMovimiento()
   const toast = useToast()
+  const { user } = useAuth()
+  // Registrar movimientos es solo admin en el backend.
+  const esAdmin = !!user?.roles?.includes('admin')
 
   const [vista, setVista] = useState<Vista>('saldos')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -107,13 +111,15 @@ export const StockPage: React.FC = () => {
             sector(es).
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => setIsModalOpen(true)}
-          disabled={sectores.length === 0 || productos.length === 0}
-        >
-          Registrar Movimiento
-        </Button>
+        {esAdmin && (
+          <Button
+            variant="primary"
+            onClick={() => setIsModalOpen(true)}
+            disabled={sectores.length === 0 || productos.length === 0}
+          >
+            Registrar Movimiento
+          </Button>
+        )}
       </div>
 
       {sectores.length === 0 && (

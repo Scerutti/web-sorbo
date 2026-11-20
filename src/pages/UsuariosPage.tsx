@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import type { User, CreateUserRequest } from '@/types/user'
+import type { User, CreateUserRequest, UpdateUserRequest } from '@/types/user'
 import { USER_ROLE_LABEL } from '../shared/constants'
 import {
   useUsers,
@@ -80,13 +80,13 @@ export const UsuariosPage: React.FC = () => {
     }
   }
 
-  const handleSubmit = async (payload: CreateUserRequest) => {
+  const handleSubmit = async (payload: CreateUserRequest | UpdateUserRequest) => {
     try {
       if (editingUsuario) {
         await updateUserMutation.mutateAsync({ id: editingUsuario.id, user: payload })
         toast.success('Usuario actualizado correctamente')
       } else {
-        await createUserMutation.mutateAsync(payload)
+        await createUserMutation.mutateAsync(payload as CreateUserRequest)
         toast.success('Usuario creado correctamente')
       }
       setIsModalOpen(false)
